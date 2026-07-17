@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.keystore
+*.jks
+app.zip
+
+android/.gradle/
+android/.idea/
+android/app/build/
+android/build/

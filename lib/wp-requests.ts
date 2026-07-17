@@ -1,3 +1,5 @@
+import { getAuthToken } from "./auth";
+
 export type WordPressRequestErrorKind =
   | "auth"
   | "validation"
@@ -110,8 +112,7 @@ const MAX_TICKET_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TICKET_TOTAL_SIZE = 50 * 1024 * 1024;
 
 export function getWordPressToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("wp_token") ?? sessionStorage.getItem("wp_token");
+  return getAuthToken();
 }
 
 export function requestErrorMessage(error: unknown): string {

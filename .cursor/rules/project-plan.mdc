@@ -24,6 +24,14 @@ alwaysApply: true
 - **Success**: The server response controls success; the client only shows success after an HTTP 201 response with a valid `RA-...` or `TK-...` reference.
 - **Config**: Production builds use `.env.production.local`; `NEXT_PUBLIC_WORDPRESS_URL` selects the WordPress REST origin and is embedded at build time; dispatch phone is currently `+6654551559`.
 
+## Member profile and request autofill
+
+- **API**: The WordPress plugin exposes authenticated `GET` and `PATCH` requests at `/wp-json/myroadclub/v1/member-profile`. WordPress derives the target user from the member JWT; callers cannot select another user.
+- **Profile page**: Protected `/profile` lets members edit first name, last name, display name, email, and phone. Username and membership ID are displayed read-only.
+- **Field sources**: WordPress core owns names, display name, and email. Phone reads canonical `mrc_phone` when that key exists, otherwise falls back to `billing_phone` then `phone`; updates write `mrc_phone` and synchronize an existing `billing_phone`. Membership ID reads the first non-empty value from `mrc_membership_id`, `membership_id`, then `membership_number`, and is never member-editable.
+- **Autofill**: Ticket requests prefill first name, last name, phone, and email. Roadside requests also prefill account/display name and membership ID and mark the requester as a member. Defaults apply once per form mount and only to empty fields, so delayed profile loads and profile-update events do not overwrite member-entered request data.
+- **Shared state**: `lib/wp-profile.ts` owns authenticated profile requests, safe errors, caching, and update events. A successful profile save refreshes the cache; failed profile loads leave request fields editable.
+
 ## Other URLs
 
 - **Plan a Trip (tab)**: `https://myroadclub.com` — shown in-app; remote site may restrict embedding.
@@ -34,7 +42,7 @@ alwaysApply: true
 
 - **URL / VPS**: `https://app.myroadclub.com` on `64.225.43.219`.
 - **Architecture**: Next.js static export served directly by Nginx; no Node.js production process.
-- **Deploy order**: Install, configure, activate, and verify the WordPress request plugin first; then build the app on the Mac with `NEXT_PUBLIC_WORDPRESS_URL=https://myroadclub.com` and run `SSH_TARGET=deploy@64.225.43.219 ./scripts/deploy-static.sh`.
+- **Deploy order**: Install, configure, activate, and verify the WordPress request plugin (including the member-profile GET/PATCH API) first; only then build the app on the Mac with `NEXT_PUBLIC_WORDPRESS_URL=https://myroadclub.com` and run `SSH_TARGET=deploy@64.225.43.219 ./scripts/deploy-static.sh`.
 - **WordPress server**: PHP-FPM and Nginx must allow the documented multipart upload limits, Nginx must forward the `Authorization` header, production CORS permits `https://app.myroadclub.com`, and optional local browser testing uses the exact `MRC_REQUESTS_DEV_ORIGIN` configured in `wp-config.php`.
 - **Deploy script**: The static deployment script uses an owner-checked remote lock and rolls back failures before completion.
 - **Releases**: `/var/www/app.myroadclub.com/releases`; Nginx serves the atomic `current` symlink and retains five releases.

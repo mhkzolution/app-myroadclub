@@ -11,9 +11,9 @@ Production is a static Next.js export served by Nginx:
 
 ## WordPress request API
 
-The static app submits both request forms to the `MyRoadClub Requests` plugin.
-Deploy and verify the WordPress plugin before deploying an app build that uses
-the endpoints.
+The static app submits both request forms and reads and updates the current
+member profile through the `MyRoadClub Requests` plugin. Deploy and verify the
+WordPress plugin before deploying an app build that uses these endpoints.
 
 ### Install and activate the plugin
 
@@ -41,7 +41,7 @@ Plugins > Installed Plugins** and select **Activate** for
 
 The plugin owns the canonical private post types, registered meta schema,
 validation, REST persistence, and ticket attachment linkage. Its authenticated
-POST-only endpoints are:
+request-submission endpoints are:
 
 - `/wp-json/myroadclub/v1/roadside-requests`
 - `/wp-json/myroadclub/v1/ticket-requests`
@@ -49,6 +49,46 @@ POST-only endpoints are:
 Requests are saved as pending records authored by the authenticated WordPress
 member. The post types are not public, publicly queryable, or exposed through
 the standard WordPress REST post routes.
+
+### Member profile endpoint contract
+
+The plugin also exposes the authenticated current-member endpoint:
+
+- `GET /wp-json/myroadclub/v1/member-profile` returns the current profile with
+  HTTP `200`.
+- `PATCH /wp-json/myroadclub/v1/member-profile` accepts a complete JSON object
+  containing `firstName`, `lastName`, `displayName`, `email`, and `phone`, and
+  returns the saved profile with HTTP `200`.
+
+Both methods derive the user ID from the member JWT. There is no user-ID route
+or request field that can select another account. The successful response
+contract is:
+
+```json
+{
+  "id": 123,
+  "username": "member-login",
+  "firstName": "Ada",
+  "lastName": "Lovelace",
+  "displayName": "Ada Lovelace",
+  "email": "ada@example.com",
+  "phone": "+15550100",
+  "membershipId": "MRC-1001"
+}
+```
+
+`username` and `membershipId` are read-only and must not be sent by the app's
+PATCH client. First name, last name, display name, and email use WordPress core
+user fields. Phone reads `mrc_phone` whenever that canonical key exists;
+otherwise it falls back to `billing_phone`, then `phone`. A profile update
+writes `mrc_phone` and also synchronizes `billing_phone` when that legacy key
+already exists. Membership ID is the first non-empty value from
+`mrc_membership_id`, `membership_id`, then `membership_number`; members cannot
+update it through this API.
+
+Expect HTTP `401` without a valid JWT, `422` for missing, invalid, too-long, or
+non-unique editable values, and `500` for a storage failure. Error messages are
+safe for members and do not expose internal WordPress details.
 
 ### Configure uploads and PHP-FPM
 
@@ -141,21 +181,26 @@ curl -i -X OPTIONS \
 
 Expect `Access-Control-Allow-Origin` to equal the requesting allowed origin,
 `Access-Control-Allow-Headers: Authorization, Content-Type`,
-`Access-Control-Allow-Methods: POST, OPTIONS`, and `Vary: Origin`. Repeat with
-an unlisted origin and confirm no `Access-Control-Allow-Origin` is returned.
+`Access-Control-Allow-Methods: GET, PATCH, POST, OPTIONS`, and `Vary: Origin`.
+Repeat with an unlisted origin and confirm no `Access-Control-Allow-Origin` is
+returned.
 
 ## Deploy the static app
 
-1. Install, configure, and activate the WordPress plugin as described above.
-2. Confirm the plugin route rejects a request without a token with HTTP `401`.
-3. Set the production build values in `.env.production.local`:
+1. Install, configure, and activate plugin version 1.1.0 or later as described
+   above.
+2. Verify the request endpoints and both member-profile methods, including an
+   authenticated GET and PATCH, before deploying the dependent static app.
+3. Confirm the protected routes reject requests without a token with HTTP
+   `401`.
+4. Set the production build values in `.env.production.local`:
 
    ```dotenv
    NEXT_PUBLIC_WORDPRESS_URL=https://myroadclub.com
    ```
 
-4. Verify app-server access with `ssh deploy@64.225.43.219`.
-5. Run:
+5. Verify app-server access with `ssh deploy@64.225.43.219`.
+6. Run:
 
    ```bash
    SSH_TARGET=deploy@64.225.43.219 ./scripts/deploy-static.sh
@@ -257,6 +302,105 @@ else
 fi
 ```
 
+### Verify the member profile API
+
+Use the normal member token obtained above. Keep shell tracing disabled. The
+helper supplies the bearer header through an ephemeral curl configuration, so
+the JWT is not copied into command history or a curl command-line argument:
+
+```bash
+set +x
+wp_member_curl() {
+  curl --config <(
+    printf 'header = "Authorization: Bearer %s"\n' "$WP_TOKEN"
+  ) "$@"
+}
+
+PROFILE_BEFORE="$(
+  wp_member_curl --fail-with-body --silent --show-error \
+    'https://myroadclub.com/wp-json/myroadclub/v1/member-profile'
+)" || {
+  printf 'Profile GET failed.\n' >&2
+  unset WP_TOKEN
+  return 1 2>/dev/null || exit 1
+}
+
+PATCH_BODY="$(
+  printf '%s' "$PROFILE_BEFORE" |
+    php -r '
+      $profile = json_decode(stream_get_contents(STDIN), true);
+      $keys = array("firstName", "lastName", "displayName", "email", "phone");
+      if (!is_array($profile)) {
+          exit(1);
+      }
+      $patch = array();
+      foreach ($keys as $key) {
+          if (!array_key_exists($key, $profile) || !is_string($profile[$key])) {
+              exit(1);
+          }
+          $patch[$key] = $profile[$key];
+      }
+      echo json_encode($patch, JSON_THROW_ON_ERROR);
+    '
+)" || {
+  printf 'Profile GET response did not match the editable contract.\n' >&2
+  unset WP_TOKEN PROFILE_BEFORE
+  return 1 2>/dev/null || exit 1
+}
+
+PROFILE_AFTER="$(
+  printf '%s' "$PATCH_BODY" |
+    wp_member_curl --fail-with-body --silent --show-error \
+      -X PATCH \
+      'https://myroadclub.com/wp-json/myroadclub/v1/member-profile' \
+      -H 'Content-Type: application/json' \
+      --data-binary @-
+)" || {
+  printf 'Profile PATCH failed.\n' >&2
+  unset WP_TOKEN PROFILE_BEFORE PATCH_BODY
+  return 1 2>/dev/null || exit 1
+}
+
+printf '%s\0%s\0' "$PROFILE_BEFORE" "$PROFILE_AFTER" |
+  php -r '
+    $parts = explode("\0", stream_get_contents(STDIN));
+    $required = array(
+        "id", "username", "firstName", "lastName", "displayName",
+        "email", "phone", "membershipId"
+    );
+    foreach (array_slice($parts, 0, 2) as $json) {
+        $profile = json_decode($json, true);
+        if (!is_array($profile) || array_keys($profile) !== $required) {
+            fwrite(STDERR, "Unexpected profile response contract.\n");
+            exit(1);
+        }
+    }
+    echo "Profile GET/PATCH contract verified.\n";
+  '
+
+unset PROFILE_BEFORE PROFILE_AFTER PATCH_BODY
+unset -f wp_member_curl
+```
+
+This PATCH writes the member's existing editable values back unchanged, making
+it safe for a production test account while still verifying authentication,
+JSON handling, current-user scoping, and persistence. Do not print `WP_TOKEN`;
+run `unset WP_TOKEN` after completing all authenticated checks.
+
+Confirm rejection without credentials separately:
+
+```bash
+curl -i \
+  'https://myroadclub.com/wp-json/myroadclub/v1/member-profile'
+
+curl -i -X PATCH \
+  'https://myroadclub.com/wp-json/myroadclub/v1/member-profile' \
+  -H 'Content-Type: application/json' \
+  --data '{}'
+```
+
+Both responses must be HTTP `401`.
+
 Verify roadside persistence and Authorization forwarding:
 
 ```bash
@@ -304,6 +448,26 @@ curl -i -X POST \
 ```
 
 Expect HTTP `401` without a token and HTTP `422` for the invalid file.
+
+## Verify member profile and autofill in the app
+
+After the plugin checks pass and the new static release is active:
+
+1. Sign in as the same normal test member and open `/profile`.
+2. Confirm username and membership ID are visible but read-only, while first
+   name, last name, display name, email, and phone are editable.
+3. Change an editable value, save, reload `/profile`, and confirm the saved
+   value persists. Restore the test value afterward if required.
+4. Open **Got a ticket?** and confirm empty first name, last name, phone, and
+   email fields are prefilled from the profile.
+5. Open **Roadside Assistance** and confirm those contact fields plus account
+   name and membership ID are prefilled and **Member?** is selected.
+6. Type into an empty request field before a delayed profile response can fill
+   it, or edit a prefilled field, and confirm member-entered text is not
+   overwritten. Navigate away and back after a successful profile save and
+   confirm a newly mounted form uses the updated profile.
+7. Sign out and confirm `/profile` is protected and profile requests without a
+   JWT fail without exposing profile data.
 
 ## Rollback
 

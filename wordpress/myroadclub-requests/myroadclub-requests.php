@@ -2,14 +2,14 @@
 /**
  * Plugin Name: MyRoadClub Requests
  * Description: Stores authenticated ticket and roadside requests.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: MyRoadClub
  * Text Domain: myroadclub-requests
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MRC_REQUESTS_VERSION', '1.0.0' );
+define( 'MRC_REQUESTS_VERSION', '1.1.0' );
 define( 'MRC_REQUESTS_FILE', __FILE__ );
 define( 'MRC_REQUESTS_DIR', plugin_dir_path( __FILE__ ) );
 

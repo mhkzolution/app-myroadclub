@@ -100,9 +100,47 @@ const ERROR_MESSAGES: Record<WordPressRequestErrorKind, string> = {
   server: "The request could not be submitted. Please try again.",
 };
 
+const USER_ERROR_MESSAGES: Record<WordPressRequestErrorKind, string> = {
+  auth: "Your session has expired. Please sign in again before submitting.",
+  validation: "Some information could not be accepted. Review the form and try again.",
+  size: "The selected files exceed the upload limit. Remove or reduce files and try again.",
+  network: "Could not reach My Road Club. Check your connection and try again.",
+  server: "We could not save your request. Please try again or call member services.",
+};
+
+const ALLOWED_TICKET_FILE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "application/pdf",
+]);
+const MAX_TICKET_FILES = 10;
+const MAX_TICKET_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_TICKET_TOTAL_SIZE = 50 * 1024 * 1024;
+
 export function getWordPressToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("wp_token") ?? sessionStorage.getItem("wp_token");
+}
+
+export function requestErrorMessage(error: unknown): string {
+  return error instanceof WordPressRequestError
+    ? USER_ERROR_MESSAGES[error.kind]
+    : USER_ERROR_MESSAGES.server;
+}
+
+export function validateTicketFiles(files: File[]): void {
+  if (files.length > MAX_TICKET_FILES) throw requestError("size");
+
+  if (files.some((file) => !ALLOWED_TICKET_FILE_TYPES.has(file.type))) {
+    throw requestError("validation");
+  }
+
+  if (
+    files.some((file) => file.size > MAX_TICKET_FILE_SIZE) ||
+    files.reduce((total, file) => total + file.size, 0) > MAX_TICKET_TOTAL_SIZE
+  ) {
+    throw requestError("size");
+  }
 }
 
 function requestError(kind: WordPressRequestErrorKind, message?: string) {
@@ -204,6 +242,7 @@ export async function submitTicketRequest(
   payload: TicketRequestPayload,
   files: File[]
 ): Promise<RequestCreated> {
+  validateTicketFiles(files);
   const token = requireToken();
   const body = new FormData();
   body.append("payload", JSON.stringify(payload));

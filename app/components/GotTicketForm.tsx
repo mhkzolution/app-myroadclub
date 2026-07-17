@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  requestErrorMessage,
+  submitTicketRequest,
+  validateTicketFiles,
+  type RequestCreated,
+  type TicketRequestPayload,
+} from "../../lib/wp-requests";
 
 const ROADSIDE_PHONE =
   (typeof process !== "undefined" &&
@@ -92,7 +99,7 @@ export function GotTicketForm() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitOk, setSubmitOk] = useState(false);
+  const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
   const [ticketFiles, setTicketFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,19 +119,8 @@ export function GotTicketForm() {
     };
   }, [previewUrls]);
 
-  const attachmentMeta = useMemo(
-    () =>
-      ticketFiles.map((f) => ({
-        name: f.name,
-        size: f.size,
-        type: f.type,
-      })),
-    [ticketFiles]
-  );
-
-  const payload = useMemo(
+  const payload = useMemo<TicketRequestPayload>(
     () => ({
-      kind: "ticket" as const,
       citationNumber,
       violationDate,
       state,
@@ -136,8 +132,6 @@ export function GotTicketForm() {
       lastName,
       phone,
       email,
-      attachments: attachmentMeta,
-      submittedAt: new Date().toISOString(),
     }),
     [
       citationNumber,
@@ -151,7 +145,6 @@ export function GotTicketForm() {
       lastName,
       phone,
       email,
-      attachmentMeta,
     ]
   );
 
@@ -159,7 +152,13 @@ export function GotTicketForm() {
     const list = e.target.files;
     if (!list?.length) return;
     const next = [...ticketFiles, ...Array.from(list)];
-    setTicketFiles(next.slice(0, 10));
+    try {
+      validateTicketFiles(next);
+      setSubmitError(null);
+      setTicketFiles(next);
+    } catch (error) {
+      setSubmitError(requestErrorMessage(error));
+    }
     e.target.value = "";
   }
 
@@ -167,7 +166,7 @@ export function GotTicketForm() {
     setTicketFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
@@ -175,19 +174,12 @@ export function GotTicketForm() {
       return;
     }
     setSubmitting(true);
-    setSubmitOk(false);
+    setSubmitOk(null);
     try {
-      if (process.env.NODE_ENV === "development") {
-        console.info("[got-ticket]", payload);
-        if (ticketFiles.length) {
-          console.info(
-            "[got-ticket] attachments",
-            ticketFiles.length,
-            "file(s) — connect an API to upload binary data in production."
-          );
-        }
-      }
-      setSubmitOk(true);
+      const result = await submitTicketRequest(payload, ticketFiles);
+      setSubmitOk(result);
+    } catch (error) {
+      setSubmitError(requestErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -302,13 +294,14 @@ export function GotTicketForm() {
           <div className="ra-field ra-mt ra-ticket-upload">
             <span className="ra-field-label">Photo or scan of your ticket (optional)</span>
             <p className="ra-ticket-upload-hint">
-              Clear photo of the full ticket — JPG, PNG, or PDF. Up to 10 files.
+              Clear photo of the full ticket — JPG, PNG, or PDF. Up to 10 files, 10 MB each and 50
+              MB combined.
             </p>
             <input
               ref={fileInputRef}
               type="file"
               className="ra-file-input-hidden"
-              accept="image/*,application/pdf"
+              accept="image/jpeg,image/png,application/pdf"
               multiple
               onChange={onTicketFilesChange}
             />
@@ -412,8 +405,8 @@ export function GotTicketForm() {
         {submitOk && (
           <p className="ra-banner-success" role="status">
             Thanks — we received your information
-            {ticketFiles.length > 0 ? " and your uploaded file(s)." : "."} Someone will reach out
-            using the phone number you provided.
+            {ticketFiles.length > 0 ? " and your uploaded file(s)" : ""}. Reference:{" "}
+            {submitOk.reference}. Someone will reach out using the phone number you provided.
           </p>
         )}
 

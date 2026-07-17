@@ -2,6 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { googleMapsEmbedUrl, googleMapsUrl } from "../../lib/maps";
+import {
+  requestErrorMessage,
+  submitRoadsideRequest,
+  type RequestCreated,
+  type RoadsideRequestPayload,
+} from "../../lib/wp-requests";
 
 const ROADSIDE_PHONE =
   (typeof process !== "undefined" &&
@@ -185,7 +191,7 @@ export function RoadsideAssistanceForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitOk, setSubmitOk] = useState(false);
+  const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
 
   const showTowingDest = serviceType === "towing";
 
@@ -272,7 +278,7 @@ export function RoadsideAssistanceForm() {
     );
   }, [fillFromReverse]);
 
-  const payload = useMemo(
+  const payload = useMemo<RoadsideRequestPayload>(
     () => ({
       serviceType,
       serviceDetails,
@@ -317,7 +323,6 @@ export function RoadsideAssistanceForm() {
         driveType,
         withVehicle,
       },
-      submittedAt: new Date().toISOString(),
     }),
     [
       serviceType,
@@ -353,7 +358,7 @@ export function RoadsideAssistanceForm() {
     ]
   );
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
     if (!serviceType) {
@@ -365,12 +370,12 @@ export function RoadsideAssistanceForm() {
       return;
     }
     setSubmitting(true);
-    setSubmitOk(false);
+    setSubmitOk(null);
     try {
-      if (process.env.NODE_ENV === "development") {
-        console.info("[roadside-request]", payload);
-      }
-      setSubmitOk(true);
+      const result = await submitRoadsideRequest(payload);
+      setSubmitOk(result);
+    } catch (error) {
+      setSubmitError(requestErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -762,7 +767,8 @@ export function RoadsideAssistanceForm() {
         )}
         {submitOk && (
           <p className="ra-banner-success" role="status">
-            Thank you. Your request was received. If you need immediate help, call dispatch.
+            Thank you. Your request was received. Reference: {submitOk.reference}. If you need
+            immediate help, call dispatch.
           </p>
         )}
 

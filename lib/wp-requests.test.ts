@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   WordPressRequestError,
   getWordPressToken,
+  requestErrorMessage,
   submitRoadsideRequest,
   submitTicketRequest,
+  validateTicketFiles,
   type RoadsideRequestPayload,
   type TicketRequestPayload,
 } from "./wp-requests";
@@ -217,4 +219,76 @@ test("translates status, network, and malformed success failures safely", async 
     submitRoadsideRequest(roadside),
     (error: unknown) => error instanceof WordPressRequestError && error.kind === "server"
   );
+});
+
+test("maps request errors to actionable user messages", () => {
+  const expected = {
+    auth: "Your session has expired. Please sign in again before submitting.",
+    validation: "Some information could not be accepted. Review the form and try again.",
+    size: "The selected files exceed the upload limit. Remove or reduce files and try again.",
+    network: "Could not reach My Road Club. Check your connection and try again.",
+    server: "We could not save your request. Please try again or call member services.",
+  } as const;
+
+  for (const [kind, message] of Object.entries(expected)) {
+    assert.equal(
+      requestErrorMessage(new WordPressRequestError(kind as keyof typeof expected, "private")),
+      message
+    );
+  }
+  assert.equal(requestErrorMessage(new Error("private")), expected.server);
+});
+
+test("ticket file validation accepts JPEG, PNG, and PDF within all limits", () => {
+  assert.doesNotThrow(() =>
+    validateTicketFiles([
+      new File(["jpg"], "ticket.jpg", { type: "image/jpeg" }),
+      new File(["png"], "ticket.png", { type: "image/png" }),
+      new File(["pdf"], "ticket.pdf", { type: "application/pdf" }),
+    ])
+  );
+});
+
+test("ticket file validation rejects count, type, per-file, and combined limit violations", () => {
+  const valid = new File(["x"], "ticket.png", { type: "image/png" });
+  const cases: Array<[File[], WordPressRequestError["kind"]]> = [
+    [Array.from({ length: 11 }, () => valid), "size"],
+    [[new File(["gif"], "ticket.gif", { type: "image/gif" })], "validation"],
+    [[new File([new Uint8Array(10 * 1024 * 1024 + 1)], "large.pdf", { type: "application/pdf" })], "size"],
+    [
+      Array.from(
+        { length: 6 },
+        (_, index) =>
+          new File([new Uint8Array(9 * 1024 * 1024)], `${index}.pdf`, {
+            type: "application/pdf",
+          })
+      ),
+      "size",
+    ],
+  ];
+
+  for (const [files, kind] of cases) {
+    assert.throws(
+      () => validateTicketFiles(files),
+      (error: unknown) => error instanceof WordPressRequestError && error.kind === kind
+    );
+  }
+});
+
+test("ticket request rejects invalid files before fetching", async () => {
+  localStorage.setItem("wp_token", "token");
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return createdResponse();
+  };
+
+  await assert.rejects(
+    submitTicketRequest(ticket, [
+      new File(["gif"], "ticket.gif", { type: "image/gif" }),
+    ]),
+    (error: unknown) =>
+      error instanceof WordPressRequestError && error.kind === "validation"
+  );
+  assert.equal(calls, 0);
 });

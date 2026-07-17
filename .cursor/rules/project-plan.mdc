@@ -18,8 +18,8 @@ alwaysApply: true
 - **Roadside form** (second tab): **Roadside Assistance Request** with: quick **service type** tiles (Jump Start, Flat Tire, Fuel Delivery, Lockout, Winch-out, Towing, Battery, Other), service details, customer info (with **Member?** toggle and optional account fields), vehicle fields, **Get current GPS location** with Google Maps embed + optional address fields filled via **OpenStreetMap Nominatim** reverse geocode (browser `fetch`), towing **drop-off** block when **Towing** is selected, additional options, and **Submit service request**.
 - **GPS**: High-accuracy `navigator.geolocation`; maps use shared helpers in `lib/maps.ts` (`googleMapsEmbedUrl` / `googleMapsUrl`).
 - **Call**: **Call dispatch now** uses `tel:` with `NEXT_PUBLIC_ROADSIDE_PHONE` (default placeholder until set in `.env.local`).
-- **Got a ticket?**: Optional **photo/PDF upload** (images + PDF, up to 10 files); thumbnails for images, filename list; attachment metadata in dev `console.info` — binary upload requires a backend or storage API in production.
-- **Submit**: Client-side validation and success message for both tabs; payloads logged as `console.info` in development (`[got-ticket]` / `[roadside-request]`). Static export has no API routes—wire a backend or form service for production intake.
+- **Got a ticket?**: Optional **photo/PDF upload** (JPEG, PNG, and PDF; up to 10 files, 10 MB each, 50 MB combined) with image thumbnails and filename list.
+- **Submit**: Both forms submit to the authenticated WordPress request API through `lib/wp-requests.ts`, await HTTP 201 before showing success, display the returned reference, preserve form state after failures, and show actionable auth/validation/size/network/server errors.
 - **Config**: Production builds use `.env.production.local`; dispatch phone is currently `+6654551559`.
 
 ## Other URLs

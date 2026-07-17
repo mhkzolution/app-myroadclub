@@ -229,13 +229,106 @@ test("maps auth, validation, network, and server failures to approved safe messa
 
   for (const [kind, message] of Object.entries(expected)) {
     assert.equal(
-      memberProfileErrorMessage(
-        new MemberProfileError(kind as keyof typeof expected, "private")
-      ),
+      memberProfileErrorMessage(new MemberProfileError(kind as keyof typeof expected, message)),
       message
     );
   }
   assert.equal(memberProfileErrorMessage(new Error("private")), expected.server);
+});
+
+test("allowlisted 422 profile messages reach callers and UI mapping", async () => {
+  browserWindow.localStorage.setItem("wp_token", "jwt");
+  const input = {
+    firstName: "Ada",
+    lastName: "Lovelace",
+    displayName: "Ada Lovelace",
+    email: "ada@example.com",
+    phone: "+15550100",
+  };
+
+  for (const [code, message] of [
+    ["mrc_profile_validation_error", "First name is required."],
+    [
+      "mrc_profile_update_error",
+      "The profile details could not be updated. Check the email address and try again.",
+    ],
+  ] as const) {
+    globalThis.fetch = async () => jsonResponse({ code, message }, 422);
+    await assert.rejects(
+      saveMemberProfile(input),
+      (error: unknown) =>
+        error instanceof MemberProfileError &&
+        error.kind === "validation" &&
+        error.message === message &&
+        memberProfileErrorMessage(error) === message
+    );
+  }
+});
+
+test("unknown, oversized, empty, and 500 profile error bodies stay generic", async () => {
+  browserWindow.localStorage.setItem("wp_token", "jwt");
+  const input = {
+    firstName: "Ada",
+    lastName: "Lovelace",
+    displayName: "Ada Lovelace",
+    email: "ada@example.com",
+    phone: "+15550100",
+  };
+  const genericValidation =
+    "Some profile information could not be accepted. Review your details and try again.";
+  const genericServer = "We could not load or save your profile. Please try again.";
+  const oversized = "x".repeat(501);
+
+  const unsafeBodies: Array<{ body: unknown; status: number; kind: "validation" | "server"; message: string }> = [
+    {
+      body: { code: "mrc_request_error", message: "proxy leaked detail" },
+      status: 422,
+      kind: "validation",
+      message: genericValidation,
+    },
+    {
+      body: { code: "mrc_profile_validation_error", message: oversized },
+      status: 422,
+      kind: "validation",
+      message: genericValidation,
+    },
+    {
+      body: { code: "mrc_profile_update_error", message: "" },
+      status: 422,
+      kind: "validation",
+      message: genericValidation,
+    },
+    {
+      body: { code: "mrc_profile_validation_error", message: "storage internals" },
+      status: 500,
+      kind: "server",
+      message: genericServer,
+    },
+    {
+      body: "not-json-friendly",
+      status: 422,
+      kind: "validation",
+      message: genericValidation,
+    },
+  ];
+
+  for (const { body, status, kind, message } of unsafeBodies) {
+    globalThis.fetch = async () =>
+      body === "not-json-friendly"
+        ? new Response("<html>proxy</html>", { status })
+        : jsonResponse(body, status);
+    await assert.rejects(
+      saveMemberProfile(input),
+      (error: unknown) =>
+        error instanceof MemberProfileError &&
+        error.kind === kind &&
+        error.message === message &&
+        memberProfileErrorMessage(error) === message &&
+        !error.message.includes("leak") &&
+        !error.message.includes("internals") &&
+        !error.message.includes("proxy")
+    );
+  }
 });
 
 test("concurrent and repeated GETs share the same cached request", async () => {

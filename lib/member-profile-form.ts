@@ -70,6 +70,17 @@ export function takeFirstRequestFormProfileDefaults(
   return profile;
 }
 
+/**
+ * Decide Member? after the first profile defaults application.
+ * If the user already toggled Member?, keep their choice; otherwise select Yes.
+ */
+export function resolveRoadsideMemberToggleDefault(
+  memberToggleTouched: boolean,
+  currentIsMember: boolean
+): boolean {
+  return memberToggleTouched ? currentIsMember : true;
+}
+
 const LIMITS: Record<keyof MemberProfileInput, number> = {
   firstName: 100,
   lastName: 100,

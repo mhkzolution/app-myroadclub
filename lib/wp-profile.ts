@@ -47,16 +47,51 @@ const ERROR_MESSAGES: Record<MemberProfileErrorKind, string> = {
   server: "We could not load or save your profile. Please try again.",
 };
 
+const ALLOWED_PROFILE_ERROR_CODES = [
+  "mrc_profile_validation_error",
+  "mrc_profile_update_error",
+] as const;
+
+interface WordPressProfileErrorBody {
+  code?: unknown;
+  message?: unknown;
+}
+
 let cachedProfile: Promise<MemberProfile> | null = null;
 
-function profileError(kind: MemberProfileErrorKind): MemberProfileError {
-  return new MemberProfileError(kind, ERROR_MESSAGES[kind]);
+function profileError(
+  kind: MemberProfileErrorKind,
+  message?: string
+): MemberProfileError {
+  return new MemberProfileError(kind, message || ERROR_MESSAGES[kind]);
 }
 
 export function memberProfileErrorMessage(error: unknown): string {
   return error instanceof MemberProfileError
-    ? ERROR_MESSAGES[error.kind]
+    ? error.message
     : ERROR_MESSAGES.server;
+}
+
+async function parseProfileErrorMessage(
+  response: Response
+): Promise<string | undefined> {
+  try {
+    const body = (await response.json()) as WordPressProfileErrorBody;
+    if (
+      body &&
+      typeof body === "object" &&
+      typeof body.code === "string" &&
+      (ALLOWED_PROFILE_ERROR_CODES as readonly string[]).includes(body.code) &&
+      typeof body.message === "string" &&
+      body.message.length > 0 &&
+      body.message.length <= 500
+    ) {
+      return body.message;
+    }
+  } catch {
+    // WordPress or an upstream proxy may return an empty or non-JSON error body.
+  }
+  return undefined;
 }
 
 function isMemberProfile(value: unknown): value is MemberProfile {
@@ -121,7 +156,10 @@ async function sendProfileRequest(
       throw profileError("auth");
     }
     if (response.status === 400 || response.status === 422) {
-      throw profileError("validation");
+      throw profileError(
+        "validation",
+        await parseProfileErrorMessage(response)
+      );
     }
     throw profileError("server");
   }

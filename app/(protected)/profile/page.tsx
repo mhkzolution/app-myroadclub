@@ -9,6 +9,7 @@ import {
   validateMemberProfileInput,
 } from "@/lib/member-profile-form";
 import {
+  MemberProfileError,
   memberProfileErrorMessage,
   saveMemberProfile,
   type MemberProfileInput,
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [form, setForm] = useState<MemberProfileInput>(EMPTY_PROFILE);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldsInvalid, setFieldsInvalid] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function ProfilePage() {
   function changeField(field: keyof MemberProfileInput, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setSaveError(null);
+    setFieldsInvalid(false);
     setSaved(false);
   }
 
@@ -44,10 +47,12 @@ export default function ProfilePage() {
     event.preventDefault();
     setSaved(false);
     setSaveError(null);
+    setFieldsInvalid(false);
 
     const validationError = validateMemberProfileInput(form);
     if (validationError) {
       setSaveError(validationError);
+      setFieldsInvalid(true);
       return;
     }
 
@@ -64,6 +69,9 @@ export default function ProfilePage() {
       setSaved(true);
     } catch (error) {
       setSaveError(memberProfileErrorMessage(error));
+      setFieldsInvalid(
+        error instanceof MemberProfileError && error.kind === "validation"
+      );
     } finally {
       setSaving(false);
     }
@@ -101,7 +109,12 @@ export default function ProfilePage() {
         )}
 
         {profile && (
-          <form className="mrc-profile-card" onSubmit={onSubmit} noValidate>
+          <form
+            className="mrc-profile-card"
+            onSubmit={onSubmit}
+            noValidate
+            aria-busy={saving || undefined}
+          >
             <section className="mrc-profile-readonly" aria-label="Membership details">
               <div>
                 <span>Username</span>
@@ -124,6 +137,7 @@ export default function ProfilePage() {
                   maxLength={100}
                   disabled={saving}
                   required
+                  aria-invalid={fieldsInvalid || undefined}
                 />
               </label>
               <label className="ra-field">
@@ -136,6 +150,7 @@ export default function ProfilePage() {
                   maxLength={100}
                   disabled={saving}
                   required
+                  aria-invalid={fieldsInvalid || undefined}
                 />
               </label>
               <label className="ra-field mrc-profile-full">
@@ -148,6 +163,7 @@ export default function ProfilePage() {
                   maxLength={100}
                   disabled={saving}
                   required
+                  aria-invalid={fieldsInvalid || undefined}
                 />
               </label>
               <label className="ra-field mrc-profile-full">
@@ -161,6 +177,7 @@ export default function ProfilePage() {
                   maxLength={254}
                   disabled={saving}
                   required
+                  aria-invalid={fieldsInvalid || undefined}
                 />
               </label>
               <label className="ra-field mrc-profile-full">
@@ -173,6 +190,7 @@ export default function ProfilePage() {
                   autoComplete="tel"
                   maxLength={40}
                   disabled={saving}
+                  aria-invalid={fieldsInvalid || undefined}
                 />
               </label>
             </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMemberProfile } from "../hooks/useMemberProfile";
 import {
   applyRoadsideProfileDefaults,
+  resolveRoadsideMemberToggleDefault,
   takeFirstRequestFormProfileDefaults,
 } from "../../lib/member-profile-form";
 import { googleMapsEmbedUrl, googleMapsUrl } from "../../lib/maps";
@@ -199,6 +200,7 @@ export function RoadsideAssistanceForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
   const profileDefaultsAppliedRef = useRef(false);
+  const memberToggleTouchedRef = useRef(false);
 
   useEffect(() => {
     const defaultsProfile = takeFirstRequestFormProfileDefaults(
@@ -235,7 +237,9 @@ export function RoadsideAssistanceForm() {
     setEmail((current) => defaultsFor("email", current));
     setAccountName((current) => defaultsFor("accountName", current));
     setMembershipId((current) => defaultsFor("membershipId", current));
-    setIsMember(true);
+    setIsMember((current) =>
+      resolveRoadsideMemberToggleDefault(memberToggleTouchedRef.current, current)
+    );
   }, [profile]);
 
   const showTowingDest = serviceType === "towing";
@@ -523,7 +527,14 @@ export function RoadsideAssistanceForm() {
               />
             </label>
           </div>
-          <ToggleRow label="Member?" value={isMember} onChange={setIsMember} />
+          <ToggleRow
+            label="Member?"
+            value={isMember}
+            onChange={(value) => {
+              memberToggleTouchedRef.current = true;
+              setIsMember(value);
+            }}
+          />
           {isMember && (
             <div className="ra-row-2 ra-mt">
               <label className="ra-field">

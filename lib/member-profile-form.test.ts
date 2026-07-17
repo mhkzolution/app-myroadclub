@@ -5,6 +5,7 @@ import {
   applyEditableProfileDefaults,
   applyRoadsideProfileDefaults,
   applyTicketProfileDefaults,
+  resolveRoadsideMemberToggleDefault,
   takeFirstRequestFormProfileDefaults,
   validateMemberProfileInput,
 } from "./member-profile-form";
@@ -149,4 +150,11 @@ test("request-form defaults apply only on the first valid profile per mount", ()
   const updated = { ...profile, phone: "+15550999", displayName: "Updated" };
   assert.equal(takeFirstRequestFormProfileDefaults(true, updated), null);
   assert.equal(takeFirstRequestFormProfileDefaults(true, null), null);
+});
+
+test("early Member? toggle overrides are preserved until the user leaves it untouched", () => {
+  assert.equal(resolveRoadsideMemberToggleDefault(false, false), true);
+  assert.equal(resolveRoadsideMemberToggleDefault(false, true), true);
+  assert.equal(resolveRoadsideMemberToggleDefault(true, false), false);
+  assert.equal(resolveRoadsideMemberToggleDefault(true, true), true);
 });

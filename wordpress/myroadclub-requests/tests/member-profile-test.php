@@ -88,6 +88,9 @@ $GLOBALS['mrc_user_meta']       = array();
 $GLOBALS['mrc_routes']          = array();
 $GLOBALS['mrc_registered_meta'] = array();
 $GLOBALS['mrc_update_error']    = null;
+$GLOBALS['mrc_meta_fail_keys']  = array();
+$GLOBALS['mrc_update_partial']  = false;
+$GLOBALS['mrc_write_log']       = array();
 
 function is_wp_error($thing): bool {
 	return $thing instanceof WP_Error;
@@ -119,6 +122,13 @@ function metadata_exists(string $type, int $user_id, string $key): bool {
 }
 
 function update_user_meta(int $user_id, string $key, $value) {
+	$GLOBALS['mrc_write_log'][] = array('op' => 'update_user_meta', 'user_id' => $user_id, 'key' => $key, 'value' => $value);
+	if (in_array($key, $GLOBALS['mrc_meta_fail_keys'], true)) {
+		$GLOBALS['mrc_meta_fail_keys'] = array_values(
+			array_diff($GLOBALS['mrc_meta_fail_keys'], array($key))
+		);
+		return new WP_Error('db_update_error', 'Sensitive meta failure detail');
+	}
 	$existing = $GLOBALS['mrc_user_meta'][$user_id][$key] ?? null;
 	if ($existing === $value) {
 		return false;
@@ -127,9 +137,33 @@ function update_user_meta(int $user_id, string $key, $value) {
 	return true;
 }
 
+function delete_user_meta(int $user_id, string $key) {
+	$GLOBALS['mrc_write_log'][] = array('op' => 'delete_user_meta', 'user_id' => $user_id, 'key' => $key);
+	unset($GLOBALS['mrc_user_meta'][$user_id][$key]);
+	return true;
+}
+
+function email_exists($email) {
+	foreach ($GLOBALS['mrc_users'] as $id => $user) {
+		if ($user->user_email === (string) $email) {
+			return (int) $id;
+		}
+	}
+	return false;
+}
+
 function wp_update_user(array $fields) {
+	$GLOBALS['mrc_write_log'][] = array('op' => 'wp_update_user', 'fields' => $fields);
+	if ($GLOBALS['mrc_update_partial']) {
+		$GLOBALS['mrc_update_partial'] = false;
+		$user = $GLOBALS['mrc_users'][$fields['ID']];
+		$user->first_name = $fields['first_name'];
+		return new WP_Error('db_update_error', 'Sensitive database detail');
+	}
 	if ($GLOBALS['mrc_update_error'] instanceof WP_Error) {
-		return $GLOBALS['mrc_update_error'];
+		$error = $GLOBALS['mrc_update_error'];
+		$GLOBALS['mrc_update_error'] = null;
+		return $error;
 	}
 	$user = $GLOBALS['mrc_users'][$fields['ID']];
 	$user->first_name   = $fields['first_name'];
@@ -375,5 +409,154 @@ $GLOBALS['mrc_update_error'] = null;
 MRC_Member_Profile_Controller::register_meta();
 assert_same(false, $GLOBALS['mrc_registered_meta']['mrc_phone']['show_in_rest'], 'phone meta remains private');
 assert_same(false, $GLOBALS['mrc_registered_meta']['mrc_membership_id']['show_in_rest'], 'membership meta remains private');
+
+// --- Atomic update contracts ---
+
+function reset_member_profile_state(): void {
+	$GLOBALS['mrc_current_user_id'] = 7;
+	$GLOBALS['mrc_update_error']    = null;
+	$GLOBALS['mrc_meta_fail_keys']  = array();
+	$GLOBALS['mrc_update_partial']  = false;
+	$GLOBALS['mrc_write_log']       = array();
+	$GLOBALS['mrc_users']           = array(
+		7 => new WP_User(
+			7,
+			array(
+				'user_login'   => 'member-login',
+				'first_name'   => 'Ada',
+				'last_name'    => 'Lovelace',
+				'display_name' => 'Ada Lovelace',
+				'user_email'   => 'ada@example.com',
+			)
+		),
+	);
+	$GLOBALS['mrc_user_meta'] = array(
+		7 => array(
+			'billing_phone' => '+15550100',
+		),
+	);
+}
+
+function profile_update_payload(array $overrides = array()): WP_REST_Request {
+	return new WP_REST_Request(
+		array_merge(
+			array(
+				'firstName'   => 'Grace',
+				'lastName'    => 'Hopper',
+				'displayName' => 'Grace Hopper',
+				'email'       => 'grace@example.com',
+				'phone'       => '+1 555 0199',
+			),
+			$overrides
+		)
+	);
+}
+
+function count_writes_for(string $op): int {
+	$count = 0;
+	foreach ($GLOBALS['mrc_write_log'] as $entry) {
+		if ($entry['op'] === $op) {
+			$count++;
+		}
+	}
+	return $count;
+}
+
+reset_member_profile_state();
+$GLOBALS['mrc_users'][9] = new WP_User(
+	9,
+	array(
+		'user_login'   => 'other-member',
+		'first_name'   => 'Other',
+		'last_name'    => 'Member',
+		'display_name' => 'Other Member',
+		'user_email'   => 'taken@example.com',
+	)
+);
+$before_meta = $GLOBALS['mrc_user_meta'][7];
+$before_user = clone $GLOBALS['mrc_users'][7];
+$duplicate = MRC_Member_Profile_Controller::update_profile(
+	profile_update_payload(array('email' => 'taken@example.com'))
+);
+assert_true($duplicate instanceof WP_Error, 'duplicate email is rejected before writes');
+assert_same('mrc_profile_validation_error', $duplicate->get_error_code(), 'duplicate email uses validation code');
+assert_same(422, $duplicate->get_error_data()['status'], 'duplicate email returns HTTP 422');
+assert_same(0, count_writes_for('update_user_meta'), 'duplicate email performs zero meta writes');
+assert_same(0, count_writes_for('wp_update_user'), 'duplicate email performs zero core writes');
+assert_same($before_meta, $GLOBALS['mrc_user_meta'][7], 'duplicate email leaves meta unchanged');
+assert_same($before_user->first_name, $GLOBALS['mrc_users'][7]->first_name, 'duplicate email leaves core first_name unchanged');
+assert_same($before_user->user_email, $GLOBALS['mrc_users'][7]->user_email, 'duplicate email leaves core email unchanged');
+
+reset_member_profile_state();
+$own_email = MRC_Member_Profile_Controller::update_profile(
+	profile_update_payload(array('email' => 'ada@example.com', 'phone' => '+1 555 0111'))
+);
+assert_true($own_email instanceof WP_REST_Response, 'current user may keep their own email');
+assert_same(200, $own_email->get_status(), 'own-email update succeeds');
+assert_same('+1 555 0111', $GLOBALS['mrc_user_meta'][7]['mrc_phone'], 'own-email update still writes phone');
+
+reset_member_profile_state();
+$GLOBALS['mrc_meta_fail_keys'] = array('billing_phone');
+$meta_fail = MRC_Member_Profile_Controller::update_profile(profile_update_payload());
+assert_true($meta_fail instanceof WP_Error, 'billing phone write failures are returned');
+assert_same(500, $meta_fail->get_error_data()['status'], 'meta write failures map to HTTP 500');
+assert_true(false === strpos($meta_fail->message, 'Sensitive'), 'meta failure details are not exposed');
+assert_true(
+	!array_key_exists('mrc_phone', $GLOBALS['mrc_user_meta'][7]),
+	'failed billing sync rolls back newly written mrc_phone'
+);
+assert_same('+15550100', $GLOBALS['mrc_user_meta'][7]['billing_phone'], 'failed billing sync restores original billing_phone');
+assert_same('Ada', $GLOBALS['mrc_users'][7]->first_name, 'meta failure leaves core first_name unchanged');
+assert_same('ada@example.com', $GLOBALS['mrc_users'][7]->user_email, 'meta failure leaves core email unchanged');
+
+reset_member_profile_state();
+$GLOBALS['mrc_meta_fail_keys'] = array('mrc_phone');
+$mrc_fail = MRC_Member_Profile_Controller::update_profile(profile_update_payload());
+assert_true($mrc_fail instanceof WP_Error, 'mrc_phone write failures are returned');
+assert_same(500, $mrc_fail->get_error_data()['status'], 'mrc_phone failures map to HTTP 500');
+assert_true(
+	!array_key_exists('mrc_phone', $GLOBALS['mrc_user_meta'][7]),
+	'mrc_phone failure does not leave a partial phone key'
+);
+assert_same('+15550100', $GLOBALS['mrc_user_meta'][7]['billing_phone'], 'mrc_phone failure leaves billing_phone untouched');
+assert_same(0, count_writes_for('wp_update_user'), 'phone meta failure prevents core updates');
+
+reset_member_profile_state();
+$GLOBALS['mrc_update_error'] = new WP_Error('update_failed', 'Sensitive database detail');
+$core_fail = MRC_Member_Profile_Controller::update_profile(profile_update_payload());
+assert_true($core_fail instanceof WP_Error, 'core update failures are returned');
+assert_true(false === strpos($core_fail->message, 'Sensitive'), 'core update internals are not exposed');
+assert_true(
+	!array_key_exists('mrc_phone', $GLOBALS['mrc_user_meta'][7]),
+	'core update failure restores phone metadata existence'
+);
+assert_same('+15550100', $GLOBALS['mrc_user_meta'][7]['billing_phone'], 'core update failure restores billing_phone');
+assert_same('Ada', $GLOBALS['mrc_users'][7]->first_name, 'core update failure leaves original first_name');
+assert_same('ada@example.com', $GLOBALS['mrc_users'][7]->user_email, 'core update failure leaves original email');
+
+reset_member_profile_state();
+$GLOBALS['mrc_update_partial'] = true;
+$partial = MRC_Member_Profile_Controller::update_profile(profile_update_payload());
+assert_true($partial instanceof WP_Error, 'partial core mutation failures are returned');
+assert_same('mrc_profile_update_error', $partial->get_error_code(), 'restored partial core failures map to update error');
+assert_same(422, $partial->get_error_data()['status'], 'confirmed restore after partial core mutation returns HTTP 422');
+assert_true(false === strpos($partial->message, 'Sensitive'), 'partial core internals are not exposed');
+assert_true(
+	!array_key_exists('mrc_phone', $GLOBALS['mrc_user_meta'][7]),
+	'partial core failure restores phone metadata'
+);
+assert_same('Ada', $GLOBALS['mrc_users'][7]->first_name, 'partial core failure restores first_name');
+assert_same('Lovelace', $GLOBALS['mrc_users'][7]->last_name, 'partial core failure restores last_name');
+assert_same('Ada Lovelace', $GLOBALS['mrc_users'][7]->display_name, 'partial core failure restores display_name');
+assert_same('ada@example.com', $GLOBALS['mrc_users'][7]->user_email, 'partial core failure restores email');
+
+reset_member_profile_state();
+$success = MRC_Member_Profile_Controller::update_profile(profile_update_payload());
+assert_true($success instanceof WP_REST_Response, 'successful atomic update returns a REST response');
+assert_same(200, $success->get_status(), 'successful atomic update returns HTTP 200');
+assert_same('Grace', $GLOBALS['mrc_users'][7]->first_name, 'successful update commits first_name');
+assert_same('grace@example.com', $GLOBALS['mrc_users'][7]->user_email, 'successful update commits email');
+assert_same('+1 555 0199', $GLOBALS['mrc_user_meta'][7]['mrc_phone'], 'successful update commits mrc_phone');
+assert_same('+1 555 0199', $GLOBALS['mrc_user_meta'][7]['billing_phone'], 'successful update syncs billing_phone');
 
 echo "Member profile tests passed.\n";

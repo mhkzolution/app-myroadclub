@@ -99,6 +99,10 @@ class MRC_Member_Profile_Controller {
 	/**
 	 * Update editable fields for the current authenticated user.
 	 *
+	 * Phone metadata is written and verified before core user fields so a later
+	 * failure can restore meta snapshots. Email uniqueness is checked before any
+	 * writes.
+	 *
 	 * @param WP_REST_Request $request REST request.
 	 * @return WP_REST_Response|WP_Error
 	 */
@@ -119,6 +123,33 @@ class MRC_Member_Profile_Controller {
 			return $validated;
 		}
 
+		$email_owner = email_exists( $validated['email'] );
+		if ( $email_owner && (int) $email_owner !== (int) $user_id ) {
+			return self::validation_error( 'That email address is already in use.' );
+		}
+
+		$sync_billing   = metadata_exists( 'user', $user_id, 'billing_phone' );
+		$meta_keys      = array( 'mrc_phone' );
+		if ( $sync_billing ) {
+			$meta_keys[] = 'billing_phone';
+		}
+		$meta_snapshots = self::snapshot_user_meta( $user_id, $meta_keys );
+		$core_snapshot  = array(
+			'first_name'   => (string) $user->first_name,
+			'last_name'    => (string) $user->last_name,
+			'display_name' => (string) $user->display_name,
+			'user_email'   => (string) $user->user_email,
+		);
+
+		if ( ! self::persist_user_meta( $user_id, 'mrc_phone', $validated['phone'] ) ) {
+			self::restore_user_meta( $user_id, $meta_snapshots );
+			return self::storage_error();
+		}
+		if ( $sync_billing && ! self::persist_user_meta( $user_id, 'billing_phone', $validated['phone'] ) ) {
+			self::restore_user_meta( $user_id, $meta_snapshots );
+			return self::storage_error();
+		}
+
 		$updated = wp_update_user(
 			array(
 				'ID'           => $user_id,
@@ -129,23 +160,120 @@ class MRC_Member_Profile_Controller {
 			)
 		);
 		if ( is_wp_error( $updated ) || ! $updated ) {
+			self::restore_user_meta( $user_id, $meta_snapshots );
+			self::restore_core_user_fields( $user_id, $core_snapshot );
+			if (
+				! self::meta_matches_snapshot( $user_id, $meta_snapshots ) ||
+				! self::core_user_matches( $user_id, $core_snapshot )
+			) {
+				return self::storage_error();
+			}
 			return self::update_error();
-		}
-
-		$sync_billing = metadata_exists( 'user', $user_id, 'billing_phone' );
-		if ( ! self::persist_user_meta( $user_id, 'mrc_phone', $validated['phone'] ) ) {
-			return self::storage_error();
-		}
-		if ( $sync_billing && ! self::persist_user_meta( $user_id, 'billing_phone', $validated['phone'] ) ) {
-			return self::storage_error();
 		}
 
 		$refreshed = get_userdata( $user_id );
 		if ( ! $refreshed instanceof WP_User ) {
+			self::restore_user_meta( $user_id, $meta_snapshots );
+			self::restore_core_user_fields( $user_id, $core_snapshot );
 			return self::storage_error();
 		}
 
 		return new WP_REST_Response( self::profile_data( $refreshed ), 200 );
+	}
+
+	/**
+	 * Capture whether each meta key exists and its current value.
+	 *
+	 * @param int                $user_id User ID.
+	 * @param array<int, string> $keys    Meta keys to snapshot.
+	 * @return array<string, array{exists: bool, value?: string}>
+	 */
+	private static function snapshot_user_meta( int $user_id, array $keys ): array {
+		$snapshots = array();
+		foreach ( $keys as $key ) {
+			if ( metadata_exists( 'user', $user_id, $key ) ) {
+				$value             = get_user_meta( $user_id, $key, true );
+				$snapshots[ $key ] = array(
+					'exists' => true,
+					'value'  => is_scalar( $value ) ? (string) $value : '',
+				);
+			} else {
+				$snapshots[ $key ] = array( 'exists' => false );
+			}
+		}
+		return $snapshots;
+	}
+
+	/**
+	 * Restore meta keys to their snapshotted existence and values.
+	 *
+	 * @param int                                           $user_id    User ID.
+	 * @param array<string, array{exists: bool, value?: string}> $snapshots Snapshots.
+	 */
+	private static function restore_user_meta( int $user_id, array $snapshots ): void {
+		foreach ( $snapshots as $key => $snapshot ) {
+			if ( ! empty( $snapshot['exists'] ) ) {
+				update_user_meta( $user_id, $key, (string) $snapshot['value'] );
+			} elseif ( metadata_exists( 'user', $user_id, $key ) ) {
+				delete_user_meta( $user_id, $key );
+			}
+		}
+	}
+
+	/**
+	 * Best-effort restore of core profile fields after a failed update.
+	 *
+	 * @param int                   $user_id  User ID.
+	 * @param array<string, string> $snapshot Original core fields.
+	 */
+	private static function restore_core_user_fields( int $user_id, array $snapshot ): void {
+		wp_update_user(
+			array(
+				'ID'           => $user_id,
+				'first_name'   => $snapshot['first_name'],
+				'last_name'    => $snapshot['last_name'],
+				'display_name' => $snapshot['display_name'],
+				'user_email'   => $snapshot['user_email'],
+			)
+		);
+	}
+
+	/**
+	 * @param int                                           $user_id    User ID.
+	 * @param array<string, array{exists: bool, value?: string}> $snapshots Snapshots.
+	 */
+	private static function meta_matches_snapshot( int $user_id, array $snapshots ): bool {
+		foreach ( $snapshots as $key => $snapshot ) {
+			$exists = metadata_exists( 'user', $user_id, $key );
+			if ( ! empty( $snapshot['exists'] ) ) {
+				if ( ! $exists ) {
+					return false;
+				}
+				$value = get_user_meta( $user_id, $key, true );
+				if ( (string) ( is_scalar( $value ) ? $value : '' ) !== (string) $snapshot['value'] ) {
+					return false;
+				}
+			} elseif ( $exists ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * @param int                   $user_id  User ID.
+	 * @param array<string, string> $snapshot Original core fields.
+	 */
+	private static function core_user_matches( int $user_id, array $snapshot ): bool {
+		$user = get_userdata( $user_id );
+		if ( ! $user instanceof WP_User ) {
+			return false;
+		}
+
+		return (string) $user->first_name === $snapshot['first_name']
+			&& (string) $user->last_name === $snapshot['last_name']
+			&& (string) $user->display_name === $snapshot['display_name']
+			&& (string) $user->user_email === $snapshot['user_email'];
 	}
 
 	/**

@@ -35,6 +35,32 @@ if (!class_exists('WP_Error')) {
 	}
 }
 
+if (!class_exists('WP_REST_Response')) {
+	class WP_REST_Response {
+		/** @var mixed */
+		public $data;
+		/** @var int */
+		public $status;
+
+		public function __construct($data = null, int $status = 200) {
+			$this->data = $data;
+			$this->status = $status;
+		}
+
+		public function get_status(): int {
+			return $this->status;
+		}
+
+		public function get_data() {
+			return $this->data;
+		}
+	}
+}
+
+if (!defined('MB_IN_BYTES')) {
+	define('MB_IN_BYTES', 1048576);
+}
+
 function assert_true(bool $condition, string $message): void {
 	if (!$condition) {
 		fwrite(STDERR, "FAIL: {$message}\n");
@@ -108,6 +134,34 @@ assert_same('', $non_towing['customer']['membershipId'], 'isMember false clears 
 $roadside_meta = MRC_Request_REST_Controller::roadside_meta($non_towing);
 assert_same('jump-start', $roadside_meta['_mrc_service_type'], 'roadside meta maps service');
 assert_true(!array_key_exists('_mrc_dropoff_address', $roadside_meta), 'non-towing omits drop-off');
+assert_true(!array_key_exists('_mrc_account_name', $roadside_meta), 'non-member omits account name');
+assert_true(!array_key_exists('_mrc_membership_id', $roadside_meta), 'non-member omits membership id');
+
+$member = MRC_Request_Validator::roadside([
+	'serviceType' => 'jump-start',
+	'customer' => [
+		'firstName' => 'Ada',
+		'lastName' => 'Lovelace',
+		'phone' => '+1 555 0100',
+		'isMember' => true,
+		'accountName' => 'Ada Lovelace',
+		'membershipId' => 'MRC-42',
+	],
+]);
+assert_true(!($member instanceof WP_Error), 'member roadside should succeed');
+$member_meta = MRC_Request_REST_Controller::roadside_meta($member);
+assert_same('Ada Lovelace', $member_meta['_mrc_account_name'], 'member retains account name');
+assert_same('MRC-42', $member_meta['_mrc_membership_id'], 'member retains membership id');
+
+$created = MRC_Request_REST_Controller::created_response([
+	'id' => 12,
+	'reference' => 'TK-20260717-12',
+	'status' => 'pending',
+	'createdAt' => '2026-07-17T00:00:00+00:00',
+]);
+assert_true($created instanceof WP_REST_Response, 'created_response returns WP_REST_Response');
+assert_same(201, $created->get_status(), 'created_response uses HTTP 201');
+assert_same(12, $created->get_data()['id'], 'created_response keeps payload');
 
 $towing = MRC_Request_Validator::roadside([
 	'serviceType' => 'towing',

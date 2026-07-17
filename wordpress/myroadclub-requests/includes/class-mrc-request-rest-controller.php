@@ -124,7 +124,7 @@ class MRC_Request_REST_Controller {
 			return self::storage_error();
 		}
 
-		return rest_ensure_response( $stored );
+		return self::created_response( $stored );
 	}
 
 	/**
@@ -153,7 +153,16 @@ class MRC_Request_REST_Controller {
 			return $stored;
 		}
 
-		return rest_ensure_response( $stored );
+		return self::created_response( $stored );
+	}
+
+	/**
+	 * Build the shared 201 Created success response.
+	 *
+	 * @param array $data Success payload.
+	 */
+	public static function created_response( array $data ): WP_REST_Response {
+		return new WP_REST_Response( $data, 201 );
 	}
 
 	/**
@@ -198,8 +207,6 @@ class MRC_Request_REST_Controller {
 			'_mrc_customer_phone'        => $customer['phone'],
 			'_mrc_customer_email'        => $customer['email'],
 			'_mrc_is_member'             => $customer['isMember'],
-			'_mrc_account_name'          => $customer['accountName'],
-			'_mrc_membership_id'         => $customer['membershipId'],
 			'_mrc_vehicle_year'          => $vehicle['year'],
 			'_mrc_vehicle_make'          => $vehicle['make'],
 			'_mrc_vehicle_model'         => $vehicle['model'],
@@ -217,6 +224,11 @@ class MRC_Request_REST_Controller {
 			'_mrc_drive_type'            => $extra['driveType'],
 			'_mrc_with_vehicle'          => $extra['withVehicle'],
 		);
+
+		if ( ! empty( $customer['isMember'] ) ) {
+			$meta['_mrc_account_name']  = $customer['accountName'];
+			$meta['_mrc_membership_id'] = $customer['membershipId'];
+		}
 
 		if ( is_array( $roadside['dropOff'] ) ) {
 			$drop_off = $roadside['dropOff'];

@@ -49,7 +49,7 @@ $production = MRC_Request_CORS::headers_for_request(
 assert_same('https://app.myroadclub.com', $production['Access-Control-Allow-Origin'], 'production origin is reflected exactly');
 assert_same('Origin', $production['Vary'], 'allowed response varies by origin');
 assert_same('Authorization, Content-Type', $production['Access-Control-Allow-Headers'], 'authorization and content type are allowed');
-assert_same('POST, OPTIONS', $production['Access-Control-Allow-Methods'], 'preflight methods are allowed');
+assert_same('GET, PATCH, POST, OPTIONS', $production['Access-Control-Allow-Methods'], 'preflight methods are allowed');
 
 $development = MRC_Request_CORS::headers_for_request(
 	new WP_REST_Request('/myroadclub/v1/roadside-requests', 'http://localhost:3000')

@@ -81,7 +81,7 @@ class MRC_Request_CORS {
 			'Access-Control-Allow-Origin'  => $origin,
 			'Vary'                         => 'Origin',
 			'Access-Control-Allow-Headers' => 'Authorization, Content-Type',
-			'Access-Control-Allow-Methods' => 'POST, OPTIONS',
+			'Access-Control-Allow-Methods' => 'GET, PATCH, POST, OPTIONS',
 		);
 	}
 

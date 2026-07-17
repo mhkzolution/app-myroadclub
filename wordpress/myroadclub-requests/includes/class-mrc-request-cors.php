@@ -33,15 +33,29 @@ class MRC_Request_CORS {
 			return $served;
 		}
 
-		header_remove( 'Access-Control-Allow-Origin' );
-		header_remove( 'Access-Control-Allow-Headers' );
-		header_remove( 'Access-Control-Allow-Methods' );
+		foreach ( self::headers_to_remove() as $name ) {
+			header_remove( $name );
+		}
 
 		foreach ( $headers as $name => $value ) {
 			header( $name . ': ' . $value, true );
 		}
 
 		return $served;
+	}
+
+	/**
+	 * Core CORS headers that must not remain on namespace responses.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function headers_to_remove(): array {
+		return array(
+			'Access-Control-Allow-Origin',
+			'Access-Control-Allow-Headers',
+			'Access-Control-Allow-Methods',
+			'Access-Control-Allow-Credentials',
+		);
 	}
 
 	/**

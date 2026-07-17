@@ -18,6 +18,8 @@ final class WP_Post {
 $GLOBALS['mrc_test_meta']             = array();
 $GLOBALS['mrc_attachment_link_calls'] = array();
 $GLOBALS['mrc_kses_calls']            = 0;
+$GLOBALS['mrc_can_edit_post']         = true;
+$GLOBALS['mrc_edit_post_link']        = 'https://example.test/wp-admin/post.php?post=42&action=edit';
 
 function get_post_meta(int $post_id, string $key, bool $single = false) {
 	return $GLOBALS['mrc_test_meta'][$key] ?? ($single ? '' : array());
@@ -37,6 +39,14 @@ function get_the_date(string $format, int $post_id): string {
 
 function get_option(string $name): string {
 	return 'F j, Y';
+}
+
+function current_user_can(string $capability, ...$args): bool {
+	return (bool) $GLOBALS['mrc_can_edit_post'];
+}
+
+function get_edit_post_link(int $post_id, string $context = 'display') {
+	return $GLOBALS['mrc_edit_post_link'];
 }
 
 function esc_html($value): string {
@@ -102,12 +112,52 @@ assert_same(
 	'request list uses the required columns'
 );
 
+assert_same(
+	'reference',
+	MRC_Request_Admin::primary_column('title', 'edit-' . MRC_Request_Post_Types::TICKET_POST_TYPE),
+	'ticket list uses reference as the primary column'
+);
+assert_same(
+	'reference',
+	MRC_Request_Admin::primary_column('title', 'edit-' . MRC_Request_Post_Types::ROADSIDE_POST_TYPE),
+	'roadside list uses reference as the primary column'
+);
+assert_same(
+	'title',
+	MRC_Request_Admin::primary_column('title', 'edit-post'),
+	'unrelated screens keep their primary column'
+);
+
 $GLOBALS['mrc_test_meta'] = array(
 	'_mrc_customer_first_name' => '<Ada>',
 	'_mrc_customer_last_name'  => 'Lovelace',
 	'_mrc_customer_phone'      => '<script>phone</script>',
 	'_mrc_violation_type'      => 'Speeding',
 );
+
+$GLOBALS['mrc_can_edit_post']  = true;
+$GLOBALS['mrc_edit_post_link'] = 'https://example.test/wp-admin/post.php?post=42&action=edit&evil="<script>"';
+ob_start();
+MRC_Request_Admin::render_ticket_column('reference', 42);
+$reference_link = (string) ob_get_clean();
+assert_contains(
+	'<a class="row-title" href="https://example.test/wp-admin/post.php?post=42&amp;action=edit&amp;evil=&quot;&lt;script&gt;&quot;">TK-20260717-42</a>',
+	$reference_link,
+	'reference renders an escaped edit link when the user can edit'
+);
+
+$GLOBALS['mrc_can_edit_post'] = false;
+ob_start();
+MRC_Request_Admin::render_ticket_column('reference', 42);
+$reference_plain = (string) ob_get_clean();
+assert_same('TK-20260717-42', $reference_plain, 'reference falls back to escaped plain text without edit capability');
+
+$GLOBALS['mrc_can_edit_post']  = true;
+$GLOBALS['mrc_edit_post_link'] = null;
+ob_start();
+MRC_Request_Admin::render_ticket_column('reference', 42);
+$reference_missing_link = (string) ob_get_clean();
+assert_same('TK-20260717-42', $reference_missing_link, 'reference falls back when no edit link is available');
 
 ob_start();
 MRC_Request_Admin::render_ticket_column('requester', 42);

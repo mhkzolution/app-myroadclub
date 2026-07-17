@@ -66,4 +66,16 @@ $outside_namespace = MRC_Request_CORS::headers_for_request(
 );
 assert_same(null, $outside_namespace, 'routes outside the plugin namespace are untouched');
 
+$remove_plan = MRC_Request_CORS::headers_to_remove();
+assert_same(
+	array(
+		'Access-Control-Allow-Origin',
+		'Access-Control-Allow-Headers',
+		'Access-Control-Allow-Methods',
+		'Access-Control-Allow-Credentials',
+	),
+	$remove_plan,
+	'namespace responses strip core CORS allow headers including credentials'
+);
+
 echo "CORS tests passed.\n";

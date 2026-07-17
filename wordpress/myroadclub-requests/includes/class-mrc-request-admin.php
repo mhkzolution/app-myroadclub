@@ -22,6 +22,7 @@ class MRC_Request_Admin {
 			'manage_' . MRC_Request_Post_Types::ROADSIDE_POST_TYPE . '_posts_columns',
 			array( __CLASS__, 'columns' )
 		);
+		add_filter( 'list_table_primary_column', array( __CLASS__, 'primary_column' ), 10, 2 );
 		add_action(
 			'manage_' . MRC_Request_Post_Types::TICKET_POST_TYPE . '_posts_custom_column',
 			array( __CLASS__, 'render_ticket_column' ),
@@ -53,6 +54,23 @@ class MRC_Request_Admin {
 			'status'    => 'Status',
 			'date'      => 'Date',
 		);
+	}
+
+	/**
+	 * Make reference the primary list-table column for both request CPTs.
+	 *
+	 * @param string $default Default primary column.
+	 * @param string $screen  Screen ID.
+	 */
+	public static function primary_column( string $default, string $screen ): string {
+		$ticket_screen   = 'edit-' . MRC_Request_Post_Types::TICKET_POST_TYPE;
+		$roadside_screen = 'edit-' . MRC_Request_Post_Types::ROADSIDE_POST_TYPE;
+
+		if ( $ticket_screen === $screen || $roadside_screen === $screen ) {
+			return 'reference';
+		}
+
+		return $default;
 	}
 
 	/**
@@ -188,12 +206,14 @@ class MRC_Request_Admin {
 	 * @param string $type_key Meta key used by the type column.
 	 */
 	private static function render_column( string $column, int $post_id, string $type_key ): void {
+		if ( 'reference' === $column ) {
+			self::render_reference_column( $post_id );
+			return;
+		}
+
 		$value = '';
 
 		switch ( $column ) {
-			case 'reference':
-				$value = get_the_title( $post_id );
-				break;
 			case 'requester':
 				$value = self::requester_name( $post_id );
 				break;
@@ -215,6 +235,25 @@ class MRC_Request_Admin {
 		}
 
 		echo esc_html( $value );
+	}
+
+	/**
+	 * Render the primary reference cell with an edit link when allowed.
+	 *
+	 * @param int $post_id Request post ID.
+	 */
+	private static function render_reference_column( int $post_id ): void {
+		$title = get_the_title( $post_id );
+
+		if ( current_user_can( 'edit_post', $post_id ) ) {
+			$edit_link = get_edit_post_link( $post_id );
+			if ( is_string( $edit_link ) && '' !== $edit_link ) {
+				echo '<a class="row-title" href="' . esc_url( $edit_link ) . '">' . esc_html( $title ) . '</a>';
+				return;
+			}
+		}
+
+		echo esc_html( $title );
 	}
 
 	/**

@@ -16,6 +16,10 @@ define( 'MRC_REQUESTS_DIR', plugin_dir_path( __FILE__ ) );
 require_once MRC_REQUESTS_DIR . 'includes/class-mrc-request-post-types.php';
 require_once MRC_REQUESTS_DIR . 'includes/class-mrc-request-validator.php';
 require_once MRC_REQUESTS_DIR . 'includes/class-mrc-request-rest-controller.php';
+require_once MRC_REQUESTS_DIR . 'includes/class-mrc-request-admin.php';
+require_once MRC_REQUESTS_DIR . 'includes/class-mrc-request-cors.php';
 
 MRC_Request_Post_Types::register();
 MRC_Request_REST_Controller::register();
+MRC_Request_Admin::register();
+MRC_Request_CORS::register();

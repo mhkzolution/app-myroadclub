@@ -2,7 +2,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { MemberProfile } from "../../lib/wp-profile";
-import { submitRoadsideRequest } from "../../lib/wp-requests";
+import {
+  submitRoadsideRequest,
+  WordPressRequestError,
+} from "../../lib/wp-requests";
 import { RoadsideAssistanceForm } from "./RoadsideAssistanceForm";
 
 const profileState = vi.hoisted(() => ({
@@ -189,6 +192,41 @@ describe("RoadsideAssistanceForm", () => {
       "rel",
       "noopener noreferrer"
     );
+  });
+
+  test("shows an actionable error and keeps entered data after submitRoadsideRequest rejects", async () => {
+    const user = userEvent.setup();
+    submitMock.mockRejectedValue(
+      new WordPressRequestError(
+        "server",
+        "We could not save your request. Please try again or call member services."
+      )
+    );
+    render(<RoadsideAssistanceForm />);
+
+    await user.click(screen.getByRole("button", { name: "Jump Start" }));
+    await user.type(screen.getByLabelText(/first name/i), "Ada");
+    await user.type(screen.getByLabelText(/last name/i), "Lovelace");
+    await user.type(screen.getByLabelText(/phone number/i), "5551234567");
+    await user.type(screen.getByLabelText(/make/i), "Honda");
+    await user.click(screen.getByRole("button", { name: /submit service request/i }));
+
+    expect(submitMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /could not save your request|try again or call member services/i
+      );
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toHaveValue("Ada");
+    expect(screen.getByLabelText(/last name/i)).toHaveValue("Lovelace");
+    expect(screen.getByLabelText(/phone number/i)).toHaveValue("5551234567");
+    expect(screen.getByLabelText(/make/i)).toHaveValue("Honda");
+    expect(screen.getByRole("button", { name: "Jump Start" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByRole("button", { name: /submit service request/i })).toBeEnabled();
   });
 
   test("disables submission until the server controls success", async () => {

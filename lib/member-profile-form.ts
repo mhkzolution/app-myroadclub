@@ -125,6 +125,7 @@ export function validateMemberProfileFields(
   return errors;
 }
 
+/** Backward-compatible single-string validation API (first field error, or null). */
 export function validateMemberProfileInput(
   input: MemberProfileInput
 ): string | null {

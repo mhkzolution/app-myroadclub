@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginWP } from "@/lib/wp-login";
+import { Button } from "@/app/components/ui/Button";
+import { Card } from "@/app/components/ui/Card";
+import { FormField } from "@/app/components/ui/FormField";
+import { Input } from "@/app/components/ui/Input";
+import { StatusBanner } from "@/app/components/ui/StatusBanner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +19,7 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
 
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     const token =
@@ -27,6 +33,7 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    setLoginError(null);
 
     try {
       setLoading(true);
@@ -41,102 +48,80 @@ export default function LoginPage() {
 
       router.replace("/");
     } catch {
-      alert("Login failed");
+      setLoginError("Login failed. Check your username and password.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="app-shell">
-      <div className="app-content">
-        <section className="roadside-section">
-          <div className="ra-form-shell">
-            <div className="min-h-screen flex items-center justify-center px-4">
-              <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
+    <main className="flex min-h-dvh items-center justify-center bg-mrc-soft px-4 py-10">
+      <Card className="w-full max-w-md">
+        <h1 className="mb-5 text-center text-2xl font-bold text-mrc-text">
+          Welcome to <span className="text-mrc-primary">My Road Club</span>
+        </h1>
 
-                <h1 className="explore-greeting mb-4">
-                  Welcome to <span>My Road Club</span>
-                </h1>
+        <form className="space-y-4" onSubmit={handleLogin} noValidate>
+          <FormField id="login-username" label="Username">
+            {(controlProps) => (
+              <Input
+                {...controlProps}
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            )}
+          </FormField>
 
-                <form onSubmit={handleLogin} className="ra-form space-y-4">
-
-                  <section className="ra-card">
-
-                    {/* Username */}
-                    <div className="ra-mt">
-                      <label className="ra-field">
-                        <span className="ra-field-label">Username</span>
-                        <input
-                          className="ra-input"
-                          placeholder="Enter your username"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Password */}
-                    <div className="ra-mt">
-                      <label className="ra-field">
-                        <span className="ra-field-label">Password</span>
-
-                        <div className="ra-relative">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            className="ra-input pr-12"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) =>
-                              setPassword(e.target.value)
-                            }
-                          />
-
-                          <button
-                            type="button"
-                            className="show-password"
-                            onClick={() =>
-                              setShowPassword(!showPassword)
-                            }
-                          >
-                            {showPassword ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                      </label>
-                    </div>
-
-                    {/* Remember */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) =>
-                          setRemember(e.target.checked)
-                        }
-                      />
-                      <span className="text-sm">
-                        Remember me
-                      </span>
-                    </div>
-
-                    {/* Button */}
-                    <button
-                      type="submit"
-                      className="mrc-account-primary-btn ra-mt w-full"
-                      disabled={loading}
-                    >
-                      {loading ? "Signing in..." : "Sign in"}
-                    </button>
-
-                  </section>
-
-                </form>
-
+          <FormField id="login-password" label="Password">
+            {(controlProps) => (
+              <div className="relative">
+                <Input
+                  {...controlProps}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  className="pr-24"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-1 flex min-h-11 items-center px-3 text-xs font-bold text-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((value) => !value)}
+                >
+                  {showPassword ? "Hide password" : "Show password"}
+                </button>
               </div>
-            </div>
-          </div>
-        </section>
-      </div>
+            )}
+          </FormField>
+
+          <label
+            htmlFor="login-remember"
+            className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm font-medium text-mrc-text"
+          >
+            <input
+              id="login-remember"
+              type="checkbox"
+              className="size-4 accent-mrc-primary"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            Remember me
+          </label>
+
+          {loginError && <StatusBanner tone="error">{loginError}</StatusBanner>}
+
+          <Button type="submit" loading={loading} className="w-full">
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </Card>
     </main>
   );
 }

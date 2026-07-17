@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useMemberProfile } from "@/app/hooks/useMemberProfile";
 import { getAuthToken, logout } from "@/lib/auth";
@@ -9,12 +9,14 @@ import {
   getMemberProfile,
   memberProfileErrorMessage,
 } from "@/lib/wp-profile";
+import { Button } from "./ui/Button";
+import { FormField } from "./ui/FormField";
+import { Input } from "./ui/Input";
+import { StatusBanner } from "./ui/StatusBanner";
 
 export function AccountMenu() {
   const { profile, loading: profileLoading, error: profileError } = useMemberProfile();
   const [open, setOpen] = useState(false);
-
-  const close = useCallback(() => setOpen(false), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,25 +26,63 @@ export function AccountMenu() {
 
   const [confirmLogout, setConfirmLogout] = useState(false);
 
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const logoutTriggerRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
     };
-  }, [open, close]);
+  }, [open]);
+
+  // Focus the close button on open; restore focus to the trigger whenever
+  // the drawer closes (Escape, backdrop click, or explicit close).
+  useEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    closeButtonRef.current?.focus();
+    return () => {
+      trigger?.focus();
+    };
+  }, [open]);
+
+  // Same pattern for the logout confirmation dialog nested inside the drawer.
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const logoutTrigger = logoutTriggerRef.current;
+    cancelButtonRef.current?.focus();
+    return () => {
+      logoutTrigger?.focus();
+    };
+  }, [confirmLogout]);
+
+  useEffect(() => {
+    if (!open && !confirmLogout) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (confirmLogout) {
+        setConfirmLogout(false);
+        return;
+      }
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, confirmLogout, close]);
 
   useEffect(() => {
     setHasToken(Boolean(getAuthToken()));
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     let authenticated = false;
     try {
       setLoading(true);
@@ -93,149 +133,161 @@ export function AccountMenu() {
   };
 
   return (
-    <div className="mrc-account-wrap">
+    <div className="relative flex justify-end">
       <button
+        ref={triggerRef}
         type="button"
-        className="mrc-account-trigger"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-mrc-border bg-white px-3 py-2 text-xs font-bold text-mrc-text shadow-sm transition hover:border-mrc-primary hover:text-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
         onClick={() => setOpen(true)}
         aria-expanded={open}
         aria-controls="mrc-account-panel"
         aria-haspopup="dialog"
       >
-        <span className="mrc-account-trigger-icon" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <span className="flex shrink-0 text-mrc-primary" aria-hidden>
+          <svg className="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
         </span>
-        <span className="mrc-account-trigger-label">My Account</span>
+        <span className="whitespace-nowrap">My Account</span>
       </button>
 
       {open && (
         <>
           <button
             type="button"
-            className="mrc-account-backdrop"
+            className="fixed inset-0 z-[200] cursor-pointer border-none bg-mrc-text/45 p-0"
             tabIndex={-1}
             aria-label="Close account menu"
             onClick={close}
           />
           <aside
             id="mrc-account-panel"
-            className="mrc-account-panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="mrc-account-title"
+            className="fixed inset-y-0 right-0 z-[210] flex h-dvh w-full max-w-sm flex-col bg-white shadow-[-8px_0_32px_rgba(0,0,0,0.12)] motion-safe:animate-[mrc-account-slide-in_0.28s_ease-out] motion-reduce:animate-none"
           >
-            <div className="mrc-account-panel-header">
-              <h2 id="mrc-account-title" className="mrc-account-panel-title">
+            <div
+              className="flex items-center justify-between gap-3 border-b border-mrc-border bg-gradient-to-b from-mrc-tint to-white px-4 py-3.5"
+              style={{ paddingTop: "max(0.875rem, env(safe-area-inset-top))" }}
+            >
+              <h2 id="mrc-account-title" className="text-lg font-bold text-mrc-text">
                 My Account
               </h2>
               <button
+                ref={closeButtonRef}
                 type="button"
-                className="mrc-account-close"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-mrc-soft text-2xl leading-none text-mrc-text transition hover:bg-mrc-border focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
                 onClick={close}
                 aria-label="Close"
               >
                 ×
               </button>
             </div>
-            <div className="mrc-account-panel-body">
-              <p className="mrc-account-lead">
+            <div
+              className="flex-1 overflow-y-auto px-4 py-5"
+              style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+            >
+              <p className="mb-4 text-sm leading-relaxed text-mrc-muted">
                 View and update your My Road Club member profile.
               </p>
               {hasToken === null ? (
-                <p className="mrc-account-hint" role="status">
+                <p className="text-xs text-mrc-muted" role="status">
                   Checking your account…
                 </p>
               ) : !hasToken ? (
-                <div className="mrc-login-form">
-
-                  <div className="ra-mt">
-                    <label className="ra-field">
-                      <span className="ra-field-label">Email</span>
-                      <input
-                        className="ra-input"
-                        placeholder="Email"
+                <form className="space-y-3" onSubmit={handleLogin} noValidate>
+                  <FormField id="account-email" label="Email">
+                    {(controlProps) => (
+                      <Input
+                        {...controlProps}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                       />
-                    </label>
-                  </div>
-                  
-                  <div className="ra-mt">
-                    <label className="ra-field">
-                      <span className="ra-field-label">Password</span>
-                      <input
+                    )}
+                  </FormField>
+                  <FormField id="account-password" label="Password">
+                    {(controlProps) => (
+                      <Input
+                        {...controlProps}
                         type="password"
-                        className="ra-input"
-                        placeholder="Password"
+                        autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                       />
-                    </label>
-                  </div>
-
-                  <button
-                    className="mrc-account-primary-btn ra-mt"
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={loading}
-                  >
-                    {loading ? "Signing in..." : "Sign in"}
-                  </button>
-                  {loginError && (
-                    <p className="ra-inline-error" role="alert">
-                      {loginError}
-                    </p>
-                  )}
-                </div>
+                    )}
+                  </FormField>
+                  <Button type="submit" loading={loading} className="w-full">
+                    {loading ? "Signing in…" : "Sign in"}
+                  </Button>
+                  {loginError && <StatusBanner tone="error">{loginError}</StatusBanner>}
+                </form>
               ) : profile ? (
-                <div className="mrc-user-info">
-                  <div className="mrc-user-div">
-                    <p>Welcome</p>
-                    <strong className="ra-display-name">{profile.displayName}</strong>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-mrc-muted">Welcome</p>
+                    <strong className="mt-1 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-mrc-primary px-4 text-sm font-bold text-mrc-primary">
+                      {profile.displayName}
+                    </strong>
                   </div>
-
-                  <a className="mrc-account-primary-btn ra-mt" href="/profile">
+                  <a
+                    href="/profile"
+                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--mrc-gradient-btn)] px-4 py-2.5 text-sm font-bold text-white shadow-[0_4px_14px_var(--mrc-shadow-primary)] transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+                  >
                     View profile
                   </a>
-                  <button
-                    className="mrc-account-primary-btn ra-mt"
+                  <Button
+                    ref={logoutTriggerRef}
                     type="button"
+                    className="w-full"
                     onClick={() => setConfirmLogout(true)}
                   >
                     Logout
-                  </button>
+                  </Button>
                 </div>
               ) : profileLoading || loading ? (
-                <p className="mrc-account-hint" role="status">
+                <p className="text-xs text-mrc-muted" role="status">
                   Loading your member profile…
                 </p>
               ) : (
-                <div className="mrc-user-info">
-                  <p className="ra-inline-error" role="alert">
+                <div className="space-y-3">
+                  <StatusBanner tone="error">
                     {loginError ||
                       (profileError
                         ? memberProfileErrorMessage(profileError)
                         : "Your profile is temporarily unavailable.")}
-                  </p>
-                  <button
-                    className="mrc-account-primary-btn ra-mt"
+                  </StatusBanner>
+                  <Button
+                    ref={logoutTriggerRef}
                     type="button"
+                    className="w-full"
                     onClick={() => setConfirmLogout(true)}
                   >
                     Logout
-                  </button>
+                  </Button>
                 </div>
               )}
 
-              <div className="mrc-account-section">
-                <h3 className="mrc-account-section-title">Member support</h3>
-                <a className="mrc-account-link" href="mailto:info@myroadclub.com">
+              <div className="mt-7 border-t border-mrc-border pt-5">
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-mrc-text">
+                  Member support
+                </h3>
+                <a
+                  className="mb-2.5 block min-h-11 py-1.5 text-sm font-medium text-mrc-primary hover:underline"
+                  href="mailto:info@myroadclub.com"
+                >
                   info@myroadclub.com
                 </a>
-                <a className="mrc-account-link" href="tel:+18668401070">
+                <a
+                  className="block min-h-11 py-1.5 text-sm font-medium text-mrc-primary hover:underline"
+                  href="tel:+18668401070"
+                >
                   866-840-1070
                 </a>
               </div>
@@ -246,35 +298,43 @@ export function AccountMenu() {
 
       {confirmLogout && (
         <>
-          <div className="mrc-modal-backdrop" />
+          <div className="fixed inset-0 z-[999] bg-black/50" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+            className="fixed left-1/2 top-1/2 z-[1000] w-[90%] max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 text-center shadow-xl motion-safe:animate-[mrcModal_0.2s_ease] motion-reduce:animate-none"
+          >
+            <h3 id="logout-title" className="text-lg font-bold text-mrc-text">
+              Logout
+            </h3>
+            <p className="mt-2 text-sm text-mrc-muted">Are you sure you want to log out?</p>
 
-          <div className="mrc-modal">
-            <h3>Logout</h3>
-            <p>Are you sure you want to log out?</p>
-
-            <div className="mrc-modal-actions">
-              <button
-                className="mrc-btn-secondary"
+            <div className="mt-4 flex gap-2.5">
+              <Button
+                ref={cancelButtonRef}
                 type="button"
+                variant="secondary"
+                className="flex-1"
                 onClick={() => setConfirmLogout(false)}
               >
                 Cancel
-              </button>
+              </Button>
 
-              <button
-                className="mrc-btn-danger"
+              <Button
                 type="button"
+                variant="danger"
+                className="flex-1"
                 onClick={() => {
                   logout();
                 }}
               >
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </>
       )}
     </div>
-    
   );
 }

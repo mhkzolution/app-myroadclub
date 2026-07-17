@@ -201,9 +201,22 @@ class MRC_Request_Post_Types {
 	}
 
 	/**
+	 * Normalize boolean meta the same way WordPress REST does.
+	 *
 	 * @param mixed $value Raw meta value.
 	 */
 	public static function sanitize_boolean( $value ): bool {
+		if ( function_exists( 'rest_sanitize_boolean' ) ) {
+			return (bool) rest_sanitize_boolean( $value );
+		}
+
+		if ( is_string( $value ) ) {
+			$value = strtolower( $value );
+			if ( in_array( $value, array( 'false', '0' ), true ) ) {
+				return false;
+			}
+		}
+
 		return (bool) $value;
 	}
 

@@ -51,8 +51,9 @@ function assert_same($expected, $actual, string $message): void {
 	}
 }
 
-$validator = dirname(__DIR__) . '/includes/class-mrc-request-validator.php';
-require_once $validator;
+$includes = dirname(__DIR__) . '/includes';
+require_once $includes . '/class-mrc-request-validator.php';
+require_once $includes . '/class-mrc-request-post-types.php';
 
 $valid_ticket = MRC_Request_Validator::ticket([
 	'firstName' => 'Ada',
@@ -75,6 +76,85 @@ $invalid_service = MRC_Request_Validator::roadside([
 	'customer' => ['firstName' => 'Ada', 'lastName' => 'Lovelace', 'phone' => '1'],
 ]);
 assert_true($invalid_service instanceof WP_Error, 'service type is constrained');
+
+$non_towing = MRC_Request_Validator::roadside([
+	'serviceType' => 'jump-start',
+	'customer' => [
+		'firstName' => 'Ada',
+		'lastName' => 'Lovelace',
+		'phone' => '+1 555 0100',
+		'isMember' => false,
+		'accountName' => 'Should Clear',
+		'membershipId' => 'MRC-1',
+	],
+	'dropOff' => [
+		'address' => '99 Drop St',
+		'city' => 'Austin',
+		'state' => 'TX',
+		'zip' => '78701',
+		'lat' => 30.1,
+		'lng' => -97.7,
+	],
+]);
+assert_true(!($non_towing instanceof WP_Error), 'non-towing roadside should succeed');
+assert_same(null, $non_towing['dropOff'], 'non-towing clears drop-off');
+assert_same('', $non_towing['customer']['accountName'], 'isMember false clears accountName');
+assert_same('', $non_towing['customer']['membershipId'], 'isMember false clears membershipId');
+
+$towing = MRC_Request_Validator::roadside([
+	'serviceType' => 'towing',
+	'customer' => [
+		'firstName' => 'Ada',
+		'lastName' => 'Lovelace',
+		'phone' => '+1 555 0100',
+	],
+	'dropOff' => [
+		'address' => '99 Drop St',
+		'city' => 'Austin',
+		'state' => 'TX',
+		'zip' => '78701',
+		'lat' => 30.1,
+		'lng' => -97.7,
+	],
+]);
+assert_true(!($towing instanceof WP_Error), 'towing roadside should succeed');
+assert_true(is_array($towing['dropOff']), 'towing retains drop-off');
+assert_same('99 Drop St', $towing['dropOff']['address'], 'towing keeps drop-off address');
+
+$invalid_date = MRC_Request_Validator::ticket([
+	'firstName' => 'Ada',
+	'lastName' => 'Lovelace',
+	'phone' => '+1 555 0100',
+	'violationDate' => '2026-13-40',
+]);
+assert_true($invalid_date instanceof WP_Error, 'invalid date is rejected');
+
+$invalid_email = MRC_Request_Validator::ticket([
+	'firstName' => 'Ada',
+	'lastName' => 'Lovelace',
+	'phone' => '+1 555 0100',
+	'email' => 'not-an-email',
+]);
+assert_true($invalid_email instanceof WP_Error, 'invalid email is rejected');
+
+$invalid_coordinate = MRC_Request_Validator::roadside([
+	'serviceType' => 'jump-start',
+	'customer' => ['firstName' => 'Ada', 'lastName' => 'Lovelace', 'phone' => '1'],
+	'serviceLocation' => ['lat' => 120],
+]);
+assert_true($invalid_coordinate instanceof WP_Error, 'invalid coordinate is rejected');
+
+$over_limit = MRC_Request_Validator::ticket([
+	'firstName' => str_repeat('A', 101),
+	'lastName' => 'Lovelace',
+	'phone' => '+1 555 0100',
+]);
+assert_true($over_limit instanceof WP_Error, 'over-limit string is rejected');
+
+assert_same(false, MRC_Request_Post_Types::sanitize_boolean('false'), 'string false sanitizes to false');
+assert_same(false, MRC_Request_Post_Types::sanitize_boolean('0'), 'string 0 sanitizes to false');
+assert_same(true, MRC_Request_Post_Types::sanitize_boolean('true'), 'string true sanitizes to true');
+assert_same(true, MRC_Request_Post_Types::sanitize_boolean(1), 'integer 1 sanitizes to true');
 
 echo "Validator tests passed.\n";
 exit(0);

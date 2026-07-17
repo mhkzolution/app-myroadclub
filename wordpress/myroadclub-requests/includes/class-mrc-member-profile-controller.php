@@ -162,7 +162,7 @@ class MRC_Member_Profile_Controller {
 			'lastName'     => (string) $user->last_name,
 			'displayName'  => (string) $user->display_name,
 			'email'        => (string) $user->user_email,
-			'phone'        => self::first_meta_value( (int) $user->ID, array( 'mrc_phone', 'billing_phone', 'phone' ) ),
+			'phone'        => self::phone_meta_value( (int) $user->ID ),
 			'membershipId' => self::first_meta_value(
 				(int) $user->ID,
 				array( 'mrc_membership_id', 'membership_id', 'membership_number' )
@@ -234,6 +234,22 @@ class MRC_Member_Profile_Controller {
 	}
 
 	/**
+	 * Return canonical phone metadata when present, including an empty value.
+	 *
+	 * Legacy values are consulted only until mrc_phone has been created.
+	 *
+	 * @param int $user_id User ID.
+	 */
+	private static function phone_meta_value( int $user_id ): string {
+		if ( metadata_exists( 'user', $user_id, 'mrc_phone' ) ) {
+			$value = get_user_meta( $user_id, 'mrc_phone', true );
+			return is_scalar( $value ) ? (string) $value : '';
+		}
+
+		return self::first_meta_value( $user_id, array( 'billing_phone', 'phone' ) );
+	}
+
+	/**
 	 * Return the first non-empty value from an ordered user-meta fallback list.
 	 *
 	 * @param int                $user_id User ID.
@@ -253,7 +269,7 @@ class MRC_Member_Profile_Controller {
 	/**
 	 * @param array  $input Source values.
 	 * @param string $key   Field key.
-	 * @param int    $max   Maximum byte length.
+	 * @param int    $max   Maximum character length.
 	 * @return string|WP_Error
 	 */
 	private static function text( array $input, string $key, int $max ) {
@@ -265,11 +281,25 @@ class MRC_Member_Profile_Controller {
 			$value = sanitize_text_field( (string) $input[ $key ] );
 		}
 
-		if ( strlen( $value ) > $max ) {
+		if ( self::character_length( $value ) > $max ) {
 			return self::validation_error( sprintf( '%s exceeds the maximum length of %d characters.', $key, $max ) );
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Count UTF-8 characters with a dependency-free fallback.
+	 *
+	 * @param string $value Text to measure.
+	 */
+	private static function character_length( string $value ): int {
+		if ( function_exists( 'mb_strlen' ) ) {
+			return mb_strlen( $value, 'UTF-8' );
+		}
+
+		$count = preg_match_all( '/./us', $value, $matches );
+		return false === $count ? strlen( $value ) : $count;
 	}
 
 	/**

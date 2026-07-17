@@ -202,13 +202,21 @@ assert_same('ada@example.com', $profile['email'], 'profile maps email');
 assert_same('+15550100', $profile['phone'], 'phone falls back to billing_phone');
 assert_same('MRC-1001', $profile['membershipId'], 'membership falls back to membership_number');
 
-$GLOBALS['mrc_user_meta'][7]['phone']             = '+10000000';
+$GLOBALS['mrc_user_meta'][7]['phone']         = '+10000000';
+$GLOBALS['mrc_user_meta'][7]['membership_id'] = 'MRC-SECONDARY';
+$profile = MRC_Member_Profile_Controller::profile_data($GLOBALS['mrc_users'][7]);
+assert_same('+15550100', $profile['phone'], 'billing_phone takes precedence over phone');
+assert_same('MRC-SECONDARY', $profile['membershipId'], 'membership_id takes precedence over membership_number');
+
 $GLOBALS['mrc_user_meta'][7]['mrc_phone']         = '+19999999';
-$GLOBALS['mrc_user_meta'][7]['membership_id']     = 'OLD-2';
 $GLOBALS['mrc_user_meta'][7]['mrc_membership_id'] = 'MRC-PRIMARY';
 $profile = MRC_Member_Profile_Controller::profile_data($GLOBALS['mrc_users'][7]);
 assert_same('+19999999', $profile['phone'], 'mrc_phone has highest precedence');
 assert_same('MRC-PRIMARY', $profile['membershipId'], 'mrc_membership_id has highest precedence');
+
+$GLOBALS['mrc_user_meta'][7]['mrc_phone'] = '';
+$profile = MRC_Member_Profile_Controller::profile_data($GLOBALS['mrc_users'][7]);
+assert_same('', $profile['phone'], 'an empty canonical phone does not resurrect legacy phone metadata');
 
 $valid = MRC_Member_Profile_Controller::validate_update(
 	array(
@@ -235,6 +243,28 @@ assert_same(
 	'validation returns only normalized editable fields'
 );
 
+$utf8_valid = MRC_Member_Profile_Controller::validate_update(
+	array(
+		'firstName'   => str_repeat('é', 100),
+		'lastName'    => 'Hopper',
+		'displayName' => 'Grace Hopper',
+		'email'       => 'grace@example.com',
+		'phone'       => '',
+	)
+);
+assert_true(!is_wp_error($utf8_valid), 'text limits count UTF-8 characters rather than bytes');
+
+$utf8_invalid = MRC_Member_Profile_Controller::validate_update(
+	array(
+		'firstName'   => str_repeat('é', 101),
+		'lastName'    => 'Hopper',
+		'displayName' => 'Grace Hopper',
+		'email'       => 'grace@example.com',
+		'phone'       => '',
+	)
+);
+assert_true($utf8_invalid instanceof WP_Error, 'UTF-8 text over the character limit is rejected');
+
 foreach (
 	array(
 		array('firstName' => '', 'lastName' => 'Hopper', 'displayName' => 'Grace', 'email' => 'grace@example.com', 'phone' => ''),
@@ -257,7 +287,12 @@ assert_same('PATCH', $route[1]['methods'], 'profile route only supports PATCH up
 assert_same(
 	array('MRC_Member_Profile_Controller', 'require_login'),
 	$route[0]['permission_callback'],
-	'both methods use the authentication guard'
+	'GET uses the authentication guard'
+);
+assert_same(
+	array('MRC_Member_Profile_Controller', 'require_login'),
+	$route[1]['permission_callback'],
+	'PATCH uses the authentication guard'
 );
 
 $GLOBALS['mrc_current_user_id'] = 0;
@@ -288,6 +323,25 @@ assert_same(7, $response->get_data()['id'], 'PATCH only updates the current auth
 assert_same('+1 555 0199', $GLOBALS['mrc_user_meta'][7]['mrc_phone'], 'PATCH writes canonical mrc_phone');
 assert_same('+1 555 0199', $GLOBALS['mrc_user_meta'][7]['billing_phone'], 'PATCH synchronizes existing billing_phone');
 
+$GLOBALS['mrc_user_meta'][7]['phone'] = '+1 555 0100';
+unset($GLOBALS['mrc_user_meta'][7]['billing_phone']);
+$without_billing = MRC_Member_Profile_Controller::update_profile(
+	new WP_REST_Request(
+		array(
+			'firstName'   => 'Grace',
+			'lastName'    => 'Hopper',
+			'displayName' => 'Grace Hopper',
+			'email'       => 'grace@example.com',
+			'phone'       => '+1 555 0188',
+		)
+	)
+);
+assert_true($without_billing instanceof WP_REST_Response, 'PATCH succeeds without billing_phone');
+assert_true(
+	!array_key_exists('billing_phone', $GLOBALS['mrc_user_meta'][7]),
+	'PATCH does not create billing_phone when it is absent'
+);
+
 $same_response = MRC_Member_Profile_Controller::update_profile(
 	new WP_REST_Request(
 		array(
@@ -295,7 +349,7 @@ $same_response = MRC_Member_Profile_Controller::update_profile(
 			'lastName'    => 'Hopper',
 			'displayName' => 'Grace Hopper',
 			'email'       => 'grace@example.com',
-			'phone'       => '+1 555 0199',
+			'phone'       => '+1 555 0188',
 		)
 	)
 );

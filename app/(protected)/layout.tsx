@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LoadingScreen } from "@/app/components/ui/LoadingScreen";
 import { getAuthToken } from "@/lib/auth";
 
 export default function ProtectedLayout({
@@ -24,12 +25,7 @@ export default function ProtectedLayout({
   }, [router]);
 
   if (!ready) {
-    return (
-      <div className="mrc-loading">
-        <div className="mrc-spinner"></div>
-        <p className="mrc-loading-text">Loading...</p>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return <>{children}</>;

@@ -93,14 +93,6 @@ const WORDPRESS_URL = (
 const REQUEST_API_URL = `${WORDPRESS_URL}/wp-json/myroadclub/v1`;
 
 const ERROR_MESSAGES: Record<WordPressRequestErrorKind, string> = {
-  auth: "Please sign in to submit your request.",
-  validation: "Please check your information and try again.",
-  size: "One or more attachments are too large.",
-  network: "Unable to connect. Please check your connection and try again.",
-  server: "The request could not be submitted. Please try again.",
-};
-
-const USER_ERROR_MESSAGES: Record<WordPressRequestErrorKind, string> = {
   auth: "Your session has expired. Please sign in again before submitting.",
   validation: "Some information could not be accepted. Review the form and try again.",
   size: "The selected files exceed the upload limit. Remove or reduce files and try again.",
@@ -124,8 +116,8 @@ export function getWordPressToken(): string | null {
 
 export function requestErrorMessage(error: unknown): string {
   return error instanceof WordPressRequestError
-    ? USER_ERROR_MESSAGES[error.kind]
-    : USER_ERROR_MESSAGES.server;
+    ? ERROR_MESSAGES[error.kind]
+    : ERROR_MESSAGES.server;
 }
 
 export function validateTicketFiles(files: File[]): void {

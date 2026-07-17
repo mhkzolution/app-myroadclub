@@ -239,6 +239,36 @@ test("maps request errors to actionable user messages", () => {
   assert.equal(requestErrorMessage(new Error("private")), expected.server);
 });
 
+test("thrown default errors share the approved user copy catalog", () => {
+  const expected = {
+    validation: "Some information could not be accepted. Review the form and try again.",
+    size: "The selected files exceed the upload limit. Remove or reduce files and try again.",
+  } as const;
+
+  assert.throws(
+    () => validateTicketFiles([new File(["gif"], "ticket.gif", { type: "image/gif" })]),
+    (error: unknown) =>
+      error instanceof WordPressRequestError &&
+      error.kind === "validation" &&
+      error.message === expected.validation &&
+      requestErrorMessage(error) === expected.validation
+  );
+
+  assert.throws(
+    () =>
+      validateTicketFiles([
+        new File([new Uint8Array(10 * 1024 * 1024 + 1)], "large.pdf", {
+          type: "application/pdf",
+        }),
+      ]),
+    (error: unknown) =>
+      error instanceof WordPressRequestError &&
+      error.kind === "size" &&
+      error.message === expected.size &&
+      requestErrorMessage(error) === expected.size
+  );
+});
+
 test("ticket file validation accepts JPEG, PNG, and PDF within all limits", () => {
   assert.doesNotThrow(() =>
     validateTicketFiles([

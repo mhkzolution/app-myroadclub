@@ -360,6 +360,7 @@ export function RoadsideAssistanceForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitOk(null);
     setSubmitError(null);
     if (!serviceType) {
       setSubmitError("Please select a service type.");
@@ -370,7 +371,6 @@ export function RoadsideAssistanceForm() {
       return;
     }
     setSubmitting(true);
-    setSubmitOk(null);
     try {
       const result = await submitRoadsideRequest(payload);
       setSubmitOk(result);

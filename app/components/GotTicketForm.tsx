@@ -157,6 +157,7 @@ export function GotTicketForm() {
       setSubmitError(null);
       setTicketFiles(next);
     } catch (error) {
+      setSubmitOk(null);
       setSubmitError(requestErrorMessage(error));
     }
     e.target.value = "";
@@ -168,13 +169,13 @@ export function GotTicketForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitOk(null);
     setSubmitError(null);
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
       setSubmitError("Please enter your first name, last name, and phone number.");
       return;
     }
     setSubmitting(true);
-    setSubmitOk(null);
     try {
       const result = await submitTicketRequest(payload, ticketFiles);
       setSubmitOk(result);

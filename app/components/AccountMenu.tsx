@@ -2,19 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { clearAuthTokens, getAuthToken, logout } from "@/lib/auth";
-
-const MAIN_SITE = "https://myroadclub.com/";
+import { useMemberProfile } from "@/app/hooks/useMemberProfile";
+import { getAuthToken, logout } from "@/lib/auth";
+import {
+  MEMBER_PROFILE_UPDATED_EVENT,
+  getMemberProfile,
+  memberProfileErrorMessage,
+} from "@/lib/wp-profile";
 
 export function AccountMenu() {
+  const { profile, loading: profileLoading, error: profileError } = useMemberProfile();
   const [open, setOpen] = useState(false);
 
   const close = useCallback(() => setOpen(false), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [user, setUser] = useState<any>(null);
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const [confirmLogout, setConfirmLogout] = useState(false);
 
@@ -33,27 +39,14 @@ export function AccountMenu() {
   }, [open, close]);
 
   useEffect(() => {
-    const token = getAuthToken();
-
-    if (!token) return;
-
-    fetch("https://myroadclub.com/wp-json/wp/v2/users/me", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data);
-      })
-      .catch(() => {
-        clearAuthTokens();
-      });
+    setHasToken(Boolean(getAuthToken()));
   }, []);
 
   const handleLogin = async () => {
+    let authenticated = false;
     try {
       setLoading(true);
+      setLoginError(null);
 
       const res = await fetch(
         "https://myroadclub.com/wp-json/jwt-auth/v1/token",
@@ -72,19 +65,28 @@ export function AccountMenu() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert("Login failed");
+        setLoginError("Sign-in failed. Check your email and password.");
+        return;
+      }
+
+      if (typeof data.token !== "string" || !data.token) {
+        setLoginError("Sign-in failed. Please try again.");
         return;
       }
 
       localStorage.setItem("wp_token", data.token);
-
-      setUser({
-        name: data.user_display_name,
-        email: data.user_email
-      });
-
-    } catch (err) {
-      console.error(err);
+      authenticated = true;
+      setHasToken(true);
+      await getMemberProfile(true);
+      window.dispatchEvent(new Event(MEMBER_PROFILE_UPDATED_EVENT));
+      setEmail("");
+      setPassword("");
+    } catch {
+      setLoginError(
+        authenticated
+          ? "Signed in, but your profile could not be loaded. Check your connection."
+          : "Could not reach My Road Club. Check your connection and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -140,9 +142,13 @@ export function AccountMenu() {
             </div>
             <div className="mrc-account-panel-body">
               <p className="mrc-account-lead">
-                View or update your membership, billing, and profile on the My Road Club member site.
+                View and update your My Road Club member profile.
               </p>
-              {!user ? (
+              {hasToken === null ? (
+                <p className="mrc-account-hint" role="status">
+                  Checking your account…
+                </p>
+              ) : !hasToken ? (
                 <div className="mrc-login-form">
 
                   <div className="ra-mt">
@@ -172,21 +178,51 @@ export function AccountMenu() {
 
                   <button
                     className="mrc-account-primary-btn ra-mt"
+                    type="button"
                     onClick={handleLogin}
                     disabled={loading}
                   >
                     {loading ? "Signing in..." : "Sign in"}
                   </button>
+                  {loginError && (
+                    <p className="ra-inline-error" role="alert">
+                      {loginError}
+                    </p>
+                  )}
                 </div>
-              ) : (
+              ) : profile ? (
                 <div className="mrc-user-info">
                   <div className="mrc-user-div">
                     <p>Welcome</p>
-                    <strong className="ra-display-name">{user.name}</strong>
+                    <strong className="ra-display-name">{profile.displayName}</strong>
                   </div>
 
+                  <a className="mrc-account-primary-btn ra-mt" href="/profile">
+                    View profile
+                  </a>
                   <button
                     className="mrc-account-primary-btn ra-mt"
+                    type="button"
+                    onClick={() => setConfirmLogout(true)}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : profileLoading || loading ? (
+                <p className="mrc-account-hint" role="status">
+                  Loading your member profile…
+                </p>
+              ) : (
+                <div className="mrc-user-info">
+                  <p className="ra-inline-error" role="alert">
+                    {loginError ||
+                      (profileError
+                        ? memberProfileErrorMessage(profileError)
+                        : "Your profile is temporarily unavailable.")}
+                  </p>
+                  <button
+                    className="mrc-account-primary-btn ra-mt"
+                    type="button"
                     onClick={() => setConfirmLogout(true)}
                   >
                     Logout
@@ -219,6 +255,7 @@ export function AccountMenu() {
             <div className="mrc-modal-actions">
               <button
                 className="mrc-btn-secondary"
+                type="button"
                 onClick={() => setConfirmLogout(false)}
               >
                 Cancel
@@ -226,8 +263,8 @@ export function AccountMenu() {
 
               <button
                 className="mrc-btn-danger"
+                type="button"
                 onClick={() => {
-                  setUser(null);
                   logout();
                 }}
               >

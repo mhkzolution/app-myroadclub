@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemberProfile } from "../hooks/useMemberProfile";
+import { applyTicketProfileDefaults } from "../../lib/member-profile-form";
 import {
   requestErrorMessage,
   submitTicketRequest,
@@ -86,6 +88,7 @@ const US_STATES = [
 ];
 
 export function GotTicketForm() {
+  const { profile } = useMemberProfile();
   const [citationNumber, setCitationNumber] = useState("");
   const [violationDate, setViolationDate] = useState("");
   const [state, setState] = useState("");
@@ -102,6 +105,35 @@ export function GotTicketForm() {
   const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
   const [ticketFiles, setTicketFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    setFirstName((current) =>
+      applyTicketProfileDefaults(
+        { firstName: current, lastName: "", phone: "", email: "" },
+        profile
+      ).firstName
+    );
+    setLastName((current) =>
+      applyTicketProfileDefaults(
+        { firstName: "", lastName: current, phone: "", email: "" },
+        profile
+      ).lastName
+    );
+    setPhone((current) =>
+      applyTicketProfileDefaults(
+        { firstName: "", lastName: "", phone: current, email: "" },
+        profile
+      ).phone
+    );
+    setEmail((current) =>
+      applyTicketProfileDefaults(
+        { firstName: "", lastName: "", phone: "", email: current },
+        profile
+      ).email
+    );
+  }, [profile]);
 
   const previewUrls = useMemo(
     () =>

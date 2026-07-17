@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemberProfile } from "../hooks/useMemberProfile";
+import { applyRoadsideProfileDefaults } from "../../lib/member-profile-form";
 import { googleMapsEmbedUrl, googleMapsUrl } from "../../lib/maps";
 import {
   requestErrorMessage,
@@ -151,6 +153,7 @@ function ToggleRow({
 }
 
 export function RoadsideAssistanceForm() {
+  const { profile } = useMemberProfile();
   const [serviceType, setServiceType] = useState<ServiceId | "">("");
   const [serviceDetails, setServiceDetails] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -192,6 +195,39 @@ export function RoadsideAssistanceForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const defaultsFor = (
+      field: keyof Omit<
+        ReturnType<typeof applyRoadsideProfileDefaults>,
+        "isMember"
+      >,
+      value: string
+    ) =>
+      applyRoadsideProfileDefaults(
+        {
+          firstName: "",
+          lastName: "",
+          phone: "",
+          email: "",
+          accountName: "",
+          membershipId: "",
+          isMember: false,
+          [field]: value,
+        },
+        profile
+      )[field];
+
+    setFirstName((current) => defaultsFor("firstName", current));
+    setLastName((current) => defaultsFor("lastName", current));
+    setPhone((current) => defaultsFor("phone", current));
+    setEmail((current) => defaultsFor("email", current));
+    setAccountName((current) => defaultsFor("accountName", current));
+    setMembershipId((current) => defaultsFor("membershipId", current));
+    setIsMember(true);
+  }, [profile]);
 
   const showTowingDest = serviceType === "towing";
 

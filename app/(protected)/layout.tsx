@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getAuthToken } from "@/lib/auth";
 
 export default function ProtectedLayout({
   children,
@@ -12,7 +13,7 @@ export default function ProtectedLayout({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("wp_token");
+    const token = getAuthToken();
 
     if (!token) {
       router.replace("/login");

@@ -26,6 +26,7 @@ export function useMemberProfile(): MemberProfileState {
 
     const loadProfile = () => {
       const requestGeneration = ++generation;
+      setLoading(true);
 
       getMemberProfile()
         .then((nextProfile) => {

@@ -996,3 +996,129 @@ main {
 .pr-12 {
     padding-right: 60px;
 }
+
+/* Protected member profile editor */
+.mrc-profile-page {
+  min-height: 100%;
+  padding: 20px 16px max(32px, env(safe-area-inset-bottom));
+  background: var(--mrc-gradient-panel);
+}
+
+.mrc-profile-shell {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+.mrc-profile-back {
+  display: inline-flex;
+  margin-bottom: 16px;
+  color: var(--mrc-primary-dark);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mrc-profile-header {
+  margin-bottom: 18px;
+}
+
+.mrc-profile-header h1 {
+  margin: 2px 0 8px;
+  font-size: clamp(1.75rem, 7vw, 2.4rem);
+  line-height: 1.1;
+}
+
+.mrc-profile-header p {
+  margin: 0;
+  color: var(--mrc-text-secondary);
+  line-height: 1.5;
+}
+
+.mrc-profile-kicker {
+  color: var(--mrc-primary) !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mrc-profile-card {
+  padding: 20px;
+  border: 1px solid var(--mrc-border);
+  border-radius: 18px;
+  background: var(--mrc-surface);
+  box-shadow: 0 10px 30px var(--mrc-shadow-primary);
+}
+
+.mrc-profile-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--mrc-text-secondary);
+}
+
+.mrc-profile-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--mrc-border);
+  border-top-color: var(--mrc-primary);
+  border-radius: 50%;
+  animation: mrc-spin 0.8s linear infinite;
+}
+
+.mrc-profile-readonly {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--mrc-tint);
+}
+
+.mrc-profile-readonly div {
+  min-width: 0;
+}
+
+.mrc-profile-readonly span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--mrc-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mrc-profile-readonly strong {
+  overflow-wrap: anywhere;
+}
+
+.mrc-profile-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.mrc-profile-secondary {
+  display: inline-flex;
+  margin-top: 14px;
+  color: var(--mrc-primary-dark);
+  font-weight: 700;
+}
+
+@media (min-width: 600px) {
+  .mrc-profile-page {
+    padding-top: 36px;
+  }
+
+  .mrc-profile-card {
+    padding: 28px;
+  }
+
+  .mrc-profile-readonly,
+  .mrc-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mrc-profile-full {
+    grid-column: 1 / -1;
+  }
+}

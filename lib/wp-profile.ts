@@ -168,7 +168,7 @@ export async function saveMemberProfile(
   return profile;
 }
 
-export function applyProfileDefaults<T extends Record<string, unknown>>(
+export function applyProfileDefaults<T extends object>(
   current: T,
   defaults: Partial<T>
 ): T {

@@ -54,6 +54,7 @@ function assert_same($expected, $actual, string $message): void {
 $includes = dirname(__DIR__) . '/includes';
 require_once $includes . '/class-mrc-request-validator.php';
 require_once $includes . '/class-mrc-request-post-types.php';
+require_once $includes . '/class-mrc-request-rest-controller.php';
 
 $valid_ticket = MRC_Request_Validator::ticket([
 	'firstName' => 'Ada',
@@ -63,6 +64,9 @@ $valid_ticket = MRC_Request_Validator::ticket([
 ]);
 assert_true(!($valid_ticket instanceof WP_Error), 'valid ticket should succeed');
 assert_same('Ada', $valid_ticket['firstName'], 'valid ticket is normalized');
+
+$ticket_meta = MRC_Request_REST_Controller::ticket_meta($valid_ticket);
+assert_same('Ada', $ticket_meta['_mrc_customer_first_name'], 'ticket meta maps first name');
 
 $invalid_ticket = MRC_Request_Validator::ticket([
 	'firstName' => '',
@@ -100,6 +104,10 @@ assert_true(!($non_towing instanceof WP_Error), 'non-towing roadside should succ
 assert_same(null, $non_towing['dropOff'], 'non-towing clears drop-off');
 assert_same('', $non_towing['customer']['accountName'], 'isMember false clears accountName');
 assert_same('', $non_towing['customer']['membershipId'], 'isMember false clears membershipId');
+
+$roadside_meta = MRC_Request_REST_Controller::roadside_meta($non_towing);
+assert_same('jump-start', $roadside_meta['_mrc_service_type'], 'roadside meta maps service');
+assert_true(!array_key_exists('_mrc_dropoff_address', $roadside_meta), 'non-towing omits drop-off');
 
 $towing = MRC_Request_Validator::roadside([
 	'serviceType' => 'towing',

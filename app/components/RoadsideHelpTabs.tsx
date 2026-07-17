@@ -72,8 +72,8 @@ export function RoadsideHelpTabs() {
               tabIndex={active ? 0 : -1}
               className={
                 active
-                  ? "min-h-10 rounded-xl border border-mrc-primary bg-mrc-primary px-1.5 py-2 text-[11px] font-semibold leading-tight text-white shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-mrc-primary focus-visible:ring-offset-2 sm:px-3 sm:text-sm md:min-h-12"
-                  : "min-h-10 rounded-xl border border-transparent bg-transparent px-1.5 py-2 text-[11px] font-semibold leading-tight text-mrc-muted outline-none transition-colors hover:bg-mrc-tint hover:text-mrc-primary focus-visible:ring-2 focus-visible:ring-mrc-primary focus-visible:ring-offset-2 sm:px-3 sm:text-sm md:min-h-12"
+                  ? "min-h-11 rounded-xl border border-mrc-primary bg-mrc-primary px-1.5 py-2 text-[11px] font-semibold leading-tight text-white shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-mrc-primary focus-visible:ring-offset-2 sm:px-3 sm:text-sm md:min-h-12"
+                  : "min-h-11 rounded-xl border border-transparent bg-transparent px-1.5 py-2 text-[11px] font-semibold leading-tight text-mrc-muted outline-none transition-colors hover:bg-mrc-tint hover:text-mrc-primary focus-visible:ring-2 focus-visible:ring-mrc-primary focus-visible:ring-offset-2 sm:px-3 sm:text-sm md:min-h-12"
               }
               onClick={() => setTab(id)}
               onKeyDown={(event) => handleKeyDown(event, index)}

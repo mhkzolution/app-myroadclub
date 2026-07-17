@@ -61,4 +61,16 @@ describe("RoadsideHelpTabs", () => {
     expect(ticket).toHaveAttribute("tabindex", "-1");
     expect(roadside).toHaveAttribute("tabindex", "-1");
   });
+
+  test("keeps a 44px-minimum touch target on mobile tabs", () => {
+    render(<RoadsideHelpTabs />);
+    const tabs = screen.getAllByRole("tab");
+
+    for (const tab of tabs) {
+      expect(tab.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["min-h-11", "md:min-h-12"])
+      );
+      expect(tab.className.split(/\s+/)).not.toContain("min-h-10");
+    }
+  });
 });

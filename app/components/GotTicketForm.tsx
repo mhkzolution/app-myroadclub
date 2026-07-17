@@ -13,6 +13,13 @@ import {
   type RequestCreated,
   type TicketRequestPayload,
 } from "../../lib/wp-requests";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { FormField } from "./ui/FormField";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
+import { StatusBanner } from "./ui/StatusBanner";
+import { Textarea } from "./ui/Textarea";
 
 const ROADSIDE_PHONE =
   (typeof process !== "undefined" &&
@@ -228,10 +235,19 @@ export function GotTicketForm() {
   }
 
   return (
-    <div className="ra-form-shell">
-      <header className="ra-form-header">
-        <div className="ra-form-header-icon ra-form-header-icon-ticket" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <div className="rounded-3xl border border-mrc-primary/20 bg-[var(--mrc-gradient-panel)] p-3 shadow-[0_8px_28px_var(--mrc-shadow-primary)] sm:p-5 lg:p-6">
+      <header className="mb-5 flex flex-col items-center text-center">
+        <div
+          className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-mrc-primary/10 text-mrc-primary"
+          aria-hidden
+        >
+          <svg
+            className="size-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <path d="M14 2v6h6" />
             <path d="M16 13H8" />
@@ -239,223 +255,282 @@ export function GotTicketForm() {
             <path d="M10 9H8" />
           </svg>
         </div>
-        <h2 className="ra-form-title" id="got-ticket-title">
+        <h2 className="text-2xl font-bold text-mrc-text" id="got-ticket-title">
           Got a ticket?
         </h2>
-        <p className="ra-form-intro">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-mrc-muted">
           Tell us about your citation so our team can follow up with options and next steps.
         </p>
-        <a className="ra-call-pill" href={telHref(ROADSIDE_PHONE)}>
+        <a
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-mrc-primary/30 bg-white px-4 py-2.5 text-sm font-bold text-mrc-primary transition hover:border-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          href={telHref(ROADSIDE_PHONE)}
+        >
           Call member services
         </a>
       </header>
 
-      <form className="ra-form" onSubmit={onSubmit} noValidate aria-labelledby="got-ticket-title">
-        <section className="ra-card">
-          <h3 className="ra-card-title">Ticket details</h3>
-          <label className="ra-field">
-            <span className="ra-field-label">Citation or ticket number (if shown)</span>
-            <input
-              className="ra-input"
-              value={citationNumber}
-              onChange={(e) => setCitationNumber(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <div className="ra-row-2 ra-mt">
-            <label className="ra-field">
-              <span className="ra-field-label">Date of violation</span>
-              <input
-                className="ra-input"
-                type="date"
-                value={violationDate}
-                onChange={(e) => setViolationDate(e.target.value)}
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Court date (if known)</span>
-              <input
-                className="ra-input"
-                type="date"
-                value={courtDate}
-                onChange={(e) => setCourtDate(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="ra-row-2 ra-mt">
-            <label className="ra-field">
-              <span className="ra-field-label">State</span>
-              <select
-                className="ra-select"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-              >
-                <option value="">Select state</option>
-                {US_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">City</span>
-              <input
-                className="ra-input"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </label>
-          </div>
-          <label className="ra-field ra-mt">
-            <span className="ra-field-label">Violation type</span>
-            <select
-              className="ra-select"
-              value={violationType}
-              onChange={(e) => setViolationType(e.target.value)}
+      <form
+        className="space-y-4"
+        onSubmit={onSubmit}
+        noValidate
+        aria-labelledby="got-ticket-title"
+      >
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Ticket details</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              id="ticket-citation"
+              label="Citation or ticket number (if shown)"
+              className="md:col-span-2"
             >
-              <option value="">Select type</option>
-              {VIOLATION_TYPES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ra-field ra-mt">
-            <span className="ra-field-label">What happened? (optional)</span>
-            <textarea
-              className="ra-textarea"
-              rows={4}
-              placeholder="Brief description — location, officer notes on the ticket, etc."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
-
-          <div className="ra-field ra-mt ra-ticket-upload">
-            <span className="ra-field-label">Photo or scan of your ticket (optional)</span>
-            <p className="ra-ticket-upload-hint">
-              Clear photo of the full ticket — JPG, PNG, or PDF. Up to 10 files, 10 MB each and 50
-              MB combined.
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="ra-file-input-hidden"
-              accept="image/jpeg,image/png,application/pdf"
-              multiple
-              onChange={onTicketFilesChange}
-            />
-            <button
-              type="button"
-              className="ra-file-upload-btn"
-              onClick={() => fileInputRef.current?.click()}
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={citationNumber}
+                  onChange={(e) => setCitationNumber(e.target.value)}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-violation-date" label="Date of violation">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="date"
+                  value={violationDate}
+                  onChange={(e) => setViolationDate(e.target.value)}
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-court-date" label="Court date (if known)">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="date"
+                  value={courtDate}
+                  onChange={(e) => setCourtDate(e.target.value)}
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-state" label="State">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  autoComplete="off"
+                >
+                  <option value="">Select state</option>
+                  {US_STATES.map((stateCode) => (
+                    <option key={stateCode} value={stateCode}>
+                      {stateCode}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+            <FormField id="ticket-city" label="City">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField
+              id="ticket-violation-type"
+              label="Violation type"
+              className="md:col-span-2"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" x2="12" y1="3" y2="15" />
-              </svg>
-              Upload ticket photos
-            </button>
-            {ticketFiles.length > 0 && (
-              <ul className="ra-file-preview-list" aria-label="Selected files">
-                {ticketFiles.map((file, index) => (
-                  <li key={`${file.name}-${file.size}-${index}`} className="ra-file-preview-item">
-                    {file.type.startsWith("image/") && previewUrls[index] ? (
-                      <img
-                        src={previewUrls[index]}
-                        alt=""
-                        className="ra-file-preview-thumb"
-                      />
-                    ) : (
-                      <span className="ra-file-preview-pdf" aria-hidden>
-                        PDF
-                      </span>
-                    )}
-                    <span className="ra-file-preview-name">{file.name}</span>
-                    <button
-                      type="button"
-                      className="ra-file-remove"
-                      onClick={() => removeTicketFile(index)}
-                      aria-label={`Remove ${file.name}`}
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={violationType}
+                  onChange={(e) => setViolationType(e.target.value)}
+                  autoComplete="off"
+                >
+                  <option value="">Select type</option>
+                  {VIOLATION_TYPES.map((violation) => (
+                    <option key={violation} value={violation}>
+                      {violation}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+            <FormField
+              id="ticket-description"
+              label="What happened? (optional)"
+              className="md:col-span-2"
+            >
+              {(controlProps) => (
+                <Textarea
+                  {...controlProps}
+                  rows={4}
+                  placeholder="Brief description — location, officer notes on the ticket, etc."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField
+              id="ticket-files"
+              label="Photo or scan of your ticket (optional)"
+              hint="Clear photo of the full ticket — JPG, PNG, or PDF. Up to 10 files, 10 MB each and 50 MB combined."
+              className="min-w-0 md:col-span-2"
+            >
+              {(controlProps) => (
+                <>
+                  <Input
+                    {...controlProps}
+                    ref={fileInputRef}
+                    type="file"
+                    className="sr-only"
+                    accept="image/jpeg,image/png,application/pdf"
+                    multiple
+                    onChange={onTicketFilesChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3 w-full sm:w-auto"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <svg
+                      className="mr-2 size-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden
                     >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" x2="12" y1="3" y2="15" />
+                    </svg>
+                    Upload ticket photos
+                  </Button>
+                  {ticketFiles.length > 0 && (
+                    <ul
+                      className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2"
+                      aria-label="Selected files"
+                    >
+                      {ticketFiles.map((file, index) => (
+                        <li
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-mrc-border bg-slate-50 p-2"
+                        >
+                          {file.type.startsWith("image/") && previewUrls[index] ? (
+                            <img
+                              src={previewUrls[index]}
+                              alt=""
+                              className="size-12 shrink-0 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <span
+                              className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-700"
+                              aria-hidden
+                            >
+                              PDF
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1 break-all text-sm text-mrc-text">
+                            {file.name}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="shrink-0 border-red-200 px-3 text-red-700 hover:border-red-400 focus-visible:ring-red-200"
+                            onClick={() => removeTicketFile(index)}
+                            aria-label={`Remove ${file.name}`}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </FormField>
           </div>
-        </section>
+        </Card>
 
-        <section className="ra-card">
-          <h3 className="ra-card-title">Your contact information</h3>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">First name</span>
-              <input
-                className="ra-input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                autoComplete="given-name"
-                required
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Last name</span>
-              <input
-                className="ra-input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                autoComplete="family-name"
-                required
-              />
-            </label>
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Your contact information</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField id="ticket-first-name" label="First name" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-last-name" label="Last name" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-phone" label="Phone number" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="tel"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="ticket-email" label="Email">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              )}
+            </FormField>
           </div>
-          <div className="ra-row-2 ra-mt">
-            <label className="ra-field">
-              <span className="ra-field-label">Phone number</span>
-              <input
-                className="ra-input"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                autoComplete="tel"
-                required
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Email</span>
-              <input
-                className="ra-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </label>
-          </div>
-        </section>
+        </Card>
 
-        {submitError && (
-          <p className="ra-banner-error" role="alert">
-            {submitError}
-          </p>
-        )}
+        {submitError && <StatusBanner tone="error">{submitError}</StatusBanner>}
         {submitOk && (
-          <p className="ra-banner-success" role="status">
+          <StatusBanner tone="success">
             Thanks — we received your information
             {ticketFiles.length > 0 ? " and your uploaded file(s)" : ""}. Reference:{" "}
             {submitOk.reference}. Someone will reach out using the phone number you provided.
-          </p>
+          </StatusBanner>
         )}
 
-        <button type="submit" className="ra-submit" disabled={submitting}>
+        <Button type="submit" loading={submitting} className="w-full">
           {submitting ? "Submitting…" : "Submit ticket info"}
-        </button>
-        <p className="ra-disclaimer">
+        </Button>
+        <p className="text-center text-xs leading-5 text-mrc-muted">
           This form does not constitute legal advice. By submitting, you agree we may contact you
           about this request using the information provided.
         </p>

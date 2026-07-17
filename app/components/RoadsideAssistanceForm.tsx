@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMemberProfile } from "../hooks/useMemberProfile";
-import { applyRoadsideProfileDefaults } from "../../lib/member-profile-form";
+import {
+  applyRoadsideProfileDefaults,
+  takeFirstRequestFormProfileDefaults,
+} from "../../lib/member-profile-form";
 import { googleMapsEmbedUrl, googleMapsUrl } from "../../lib/maps";
 import {
   requestErrorMessage,
@@ -195,9 +198,15 @@ export function RoadsideAssistanceForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
+  const profileDefaultsAppliedRef = useRef(false);
 
   useEffect(() => {
-    if (!profile) return;
+    const defaultsProfile = takeFirstRequestFormProfileDefaults(
+      profileDefaultsAppliedRef.current,
+      profile
+    );
+    if (!defaultsProfile) return;
+    profileDefaultsAppliedRef.current = true;
 
     const defaultsFor = (
       field: keyof Omit<
@@ -217,7 +226,7 @@ export function RoadsideAssistanceForm() {
           isMember: false,
           [field]: value,
         },
-        profile
+        defaultsProfile
       )[field];
 
     setFirstName((current) => defaultsFor("firstName", current));

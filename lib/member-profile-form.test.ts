@@ -5,6 +5,7 @@ import {
   applyEditableProfileDefaults,
   applyRoadsideProfileDefaults,
   applyTicketProfileDefaults,
+  takeFirstRequestFormProfileDefaults,
   validateMemberProfileInput,
 } from "./member-profile-form";
 import type { MemberProfile, MemberProfileInput } from "./wp-profile";
@@ -139,4 +140,13 @@ test("profile validation enforces server text limits", () => {
     validateMemberProfileInput({ ...validInput, phone: "1".repeat(41) }) ?? "",
     /40 characters/i
   );
+});
+
+test("request-form defaults apply only on the first valid profile per mount", () => {
+  assert.equal(takeFirstRequestFormProfileDefaults(false, null), null);
+  assert.deepEqual(takeFirstRequestFormProfileDefaults(false, profile), profile);
+
+  const updated = { ...profile, phone: "+15550999", displayName: "Updated" };
+  assert.equal(takeFirstRequestFormProfileDefaults(true, updated), null);
+  assert.equal(takeFirstRequestFormProfileDefaults(true, null), null);
 });

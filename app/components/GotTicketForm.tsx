@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMemberProfile } from "../hooks/useMemberProfile";
-import { applyTicketProfileDefaults } from "../../lib/member-profile-form";
+import {
+  applyTicketProfileDefaults,
+  takeFirstRequestFormProfileDefaults,
+} from "../../lib/member-profile-form";
 import {
   requestErrorMessage,
   submitTicketRequest,
@@ -105,32 +108,38 @@ export function GotTicketForm() {
   const [submitOk, setSubmitOk] = useState<RequestCreated | null>(null);
   const [ticketFiles, setTicketFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileDefaultsAppliedRef = useRef(false);
 
   useEffect(() => {
-    if (!profile) return;
+    const defaultsProfile = takeFirstRequestFormProfileDefaults(
+      profileDefaultsAppliedRef.current,
+      profile
+    );
+    if (!defaultsProfile) return;
+    profileDefaultsAppliedRef.current = true;
 
     setFirstName((current) =>
       applyTicketProfileDefaults(
         { firstName: current, lastName: "", phone: "", email: "" },
-        profile
+        defaultsProfile
       ).firstName
     );
     setLastName((current) =>
       applyTicketProfileDefaults(
         { firstName: "", lastName: current, phone: "", email: "" },
-        profile
+        defaultsProfile
       ).lastName
     );
     setPhone((current) =>
       applyTicketProfileDefaults(
         { firstName: "", lastName: "", phone: current, email: "" },
-        profile
+        defaultsProfile
       ).phone
     );
     setEmail((current) =>
       applyTicketProfileDefaults(
         { firstName: "", lastName: "", phone: "", email: current },
-        profile
+        defaultsProfile
       ).email
     );
   }, [profile]);

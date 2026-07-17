@@ -57,6 +57,19 @@ export function applyEditableProfileDefaults(
   });
 }
 
+/**
+ * Request forms apply profile defaults once per mount.
+ * Returns the first valid profile, then null for later updates (including
+ * mrc:member-profile-updated) so typed contact fields and Member? stay intact.
+ */
+export function takeFirstRequestFormProfileDefaults(
+  alreadyApplied: boolean,
+  profile: MemberProfile | null
+): MemberProfile | null {
+  if (alreadyApplied || !profile) return null;
+  return profile;
+}
+
 const LIMITS: Record<keyof MemberProfileInput, number> = {
   firstName: 100,
   lastName: 100,

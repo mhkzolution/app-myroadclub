@@ -32,6 +32,14 @@ alwaysApply: true
 - **Autofill**: Ticket requests prefill first name, last name, phone, and email. Roadside requests also prefill account/display name and membership ID and mark the requester as a member. Defaults apply once per form mount and only to empty fields, so delayed profile loads and profile-update events do not overwrite member-entered request data.
 - **Shared state**: `lib/wp-profile.ts` owns authenticated profile requests, safe errors, caching, and update events. A successful profile save refreshes the cache; failed profile loads leave request fields editable.
 
+## Tailwind and responsive UI
+
+- **Styling ownership**: The UI is built with **Tailwind CSS v4** compiled through `@tailwindcss/postcss`. `app/globals.css` is restricted to the Tailwind import, the `@theme inline` brand tokens, `:root` brand variables/gradients, minimal `html`/`body` sizing plus safe-area insets, keyframes still referenced by arbitrary Tailwind animation utilities (`mrc-account-slide-in`, `mrcModal`), and a `prefers-reduced-motion` safety net. **Do not add feature or component selectors** (no `.ra-*`, `.mrc-*`, `.app-*`, `.explore-*`, `.show-password`, `.pr-12`, `.mb-4`, etc.) to `globals.css`; style at the call site with utilities instead.
+- **Shared primitives**: Reusable UI lives in `app/components/ui` (e.g. `Button`, `Card`, `FormField`, `LoadingScreen`, `classNames`). Prefer composing these over ad-hoc markup, and consume brand color/gradient tokens via Tailwind utilities — theme colors as `text-mrc-…`/`bg-mrc-…` and gradients/shadows as arbitrary utilities referencing the `--mrc-gradient-btn`, `--mrc-gradient-panel`, and `--mrc-shadow-primary` variables.
+- **Layout tiers**: Design mobile-first at **320px**, add paired/two-column layouts at **768px** (`md:`), and use the wider centered container at **1024px** (`lg:`). Multi-column grids must be single column on mobile and breakpoint-gated (single column that becomes two or three columns at `md`); any always-multi-column grid (tabs, service tiles, toggles) must stay overflow-safe at 320px with wrapping content and `minmax(0,1fr)` tracks. Avoid full-viewport-width and fixed pixel widths that can overflow the viewport.
+- **Controls and inputs**: Interactive controls are at least **44px** tall (`min-h-11`). Inputs render at **16px** on mobile to prevent iOS zoom, use semantic `type`/`inputMode`/`autoComplete` attributes matching the field, and provide labels, helper/error text, required indicators, `aria-invalid`, and status roles. Keep visible focus rings, correct keyboard/tab order, roving arrow-key tab navigation, Escape-to-close, and focus restoration on dialogs/drawers.
+- **Motion**: Gate nonessential animation with `motion-safe:`/`motion-reduce:` utilities at the call site; the `globals.css` reduced-motion block is a defense-in-depth backstop.
+
 ## Other URLs
 
 - **Plan a Trip (tab)**: `https://myroadclub.com` — shown in-app; remote site may restrict embedding.

@@ -107,7 +107,7 @@ A successful authenticated request in the live checks below is the required
 end-to-end proof that Nginx forwards `Authorization`; an unauthenticated `401`
 alone does not prove forwarding.
 
-### Configure the allowed development origin
+### Verify production CORS and configure a development origin
 
 Production CORS permits only `https://app.myroadclub.com`. When browser testing
 from the Next.js development server is required, add exactly the origin in use
@@ -118,8 +118,18 @@ define('MRC_REQUESTS_DEV_ORIGIN', 'http://localhost:3000');
 ```
 
 Only one development origin is supported. Omit this constant in production
-when local browser testing is not needed; never use `*`. Verify preflight
-headers for the configured origin:
+when local browser testing is not needed; never use `*`. Verify the production
+origin preflight:
+
+```bash
+curl -i -X OPTIONS \
+  'https://myroadclub.com/wp-json/myroadclub/v1/roadside-requests' \
+  -H 'Origin: https://app.myroadclub.com' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: Authorization, Content-Type'
+```
+
+When the development constant is set, verify its preflight separately:
 
 ```bash
 curl -i -X OPTIONS \
@@ -161,17 +171,90 @@ so changing it requires rebuilding and redeploying the app.
 
 ## Verify authenticated request submission
 
-Obtain a JWT for a normal test member using the site's existing authentication
-flow. Supply it through the environment; do not paste a token or member
-password into this document, source control, shell history, or logs:
+Obtain a JWT for a normal test member from the existing
+`/wp-json/jwt-auth/v1/token` endpoint. The recipe below requires Bash, `curl`,
+and PHP CLI. It prompts for both values without echo, passes credentials through
+pipes rather than command arguments, extracts only the JSON `.token` value,
+fails if the request or extraction fails, and never prints the password or
+token. Run it without shell tracing (`set -x`) and do not paste credentials into
+source control, shell history, or logs:
 
 ```bash
-read -rsp 'Normal member JWT: ' WP_TOKEN
-export WP_TOKEN
-printf '\n'
-export TEST_JPEG='/absolute/path/to/test.jpg'
-export TEST_PDF='/absolute/path/to/test.pdf'
-export INVALID_FILE='/absolute/path/to/test.txt'
+get_wp_token() {
+  local WP_USER WP_PASS AUTH_RESPONSE
+
+  command -v curl >/dev/null || {
+    printf 'curl is required.\n' >&2
+    return 1
+  }
+  command -v php >/dev/null || {
+    printf 'PHP CLI is required for safe JSON encoding and token extraction.\n' >&2
+    return 1
+  }
+
+  read -rsp 'Normal member username: ' WP_USER
+  printf '\n'
+  read -rsp 'Normal member password: ' WP_PASS
+  printf '\n'
+
+  unset WP_TOKEN
+  if ! AUTH_RESPONSE="$(
+    printf '%s\0%s\0' "$WP_USER" "$WP_PASS" |
+      php -r '
+        $raw = stream_get_contents(STDIN);
+        $parts = explode("\0", $raw, 3);
+        if (count($parts) < 2) {
+            exit(1);
+        }
+        echo json_encode(
+            array("username" => $parts[0], "password" => $parts[1]),
+            JSON_THROW_ON_ERROR
+        );
+      ' |
+      curl --fail-with-body --silent --show-error \
+        -X POST 'https://myroadclub.com/wp-json/jwt-auth/v1/token' \
+        -H 'Content-Type: application/json' \
+        --data-binary @-
+  )"; then
+    unset WP_PASS WP_USER AUTH_RESPONSE
+    printf 'JWT request failed.\n' >&2
+    return 1
+  fi
+  unset WP_PASS
+
+  if ! WP_TOKEN="$(
+    printf '%s' "$AUTH_RESPONSE" |
+      php -r '
+        $data = json_decode(stream_get_contents(STDIN), true);
+        if (
+            ! is_array($data) ||
+            ! isset($data["token"]) ||
+            ! is_string($data["token"]) ||
+            "" === $data["token"]
+        ) {
+            exit(1);
+        }
+        echo $data["token"];
+      '
+  )"; then
+    unset WP_USER AUTH_RESPONSE WP_TOKEN
+    printf 'JWT response did not contain a non-empty token.\n' >&2
+    return 1
+  fi
+
+  unset WP_USER AUTH_RESPONSE
+  export WP_TOKEN
+}
+
+if ! get_wp_token; then
+  unset -f get_wp_token
+  false
+else
+  unset -f get_wp_token
+  export TEST_JPEG='/absolute/path/to/test.jpg'
+  export TEST_PDF='/absolute/path/to/test.pdf'
+  export INVALID_FILE='/absolute/path/to/test.txt'
+fi
 ```
 
 Verify roadside persistence and Authorization forwarding:

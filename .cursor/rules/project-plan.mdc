@@ -10,7 +10,7 @@ alwaysApply: true
 - **Look**: Colors align with [myroadclub.com](https://myroadclub.com/) — primary **#00a0e3**, cyan **#39c8df**, text **#232323**, borders **#e6e6e6** (see `:root` in `app/globals.css`).
 - **Logo**: Header uses `https://myroadclub.com/wp-content/uploads/2025/10/IMG_7802-300x300.png` (`app/page.tsx`).
 - **Type**: **Roboto** via `next/font` in `app/layout.tsx`.
-- **My Account**: Top-right control (`app/components/AccountMenu.tsx`) opens a slide-over panel with **Sign in / Register** (links to `https://myroadclub.com/`) and member support email/phone. No in-app auth yet.
+- **My Account / auth**: The app signs members in through the WordPress `/wp-json/jwt-auth/v1/token` endpoint. The dedicated login page stores `wp_token` in `localStorage` when **Remember me** is selected (the default) or `sessionStorage` when it is cleared; the account slide-over sign-in stores it in `localStorage`. These browser Web Storage tokens are script-accessible bearer credentials, not HttpOnly cookies, and must not be described as protected from client-side script access.
 
 ## Roadside Assistance (request form + GPS + call)
 

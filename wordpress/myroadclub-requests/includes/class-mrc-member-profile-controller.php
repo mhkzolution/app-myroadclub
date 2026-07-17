@@ -60,8 +60,8 @@ class MRC_Member_Profile_Controller {
 			},
 		);
 
-		register_user_meta( 'mrc_phone', $args );
-		register_user_meta( 'mrc_membership_id', $args );
+		register_meta( 'user', 'mrc_phone', $args );
+		register_meta( 'user', 'mrc_membership_id', $args );
 	}
 
 	/**

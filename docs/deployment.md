@@ -187,7 +187,7 @@ returned.
 
 ## Deploy the static app
 
-1. Install, configure, and activate plugin version 1.1.0 or later as described
+1. Install, configure, and activate plugin version 1.1.1 or later as described
    above.
 2. Verify the request endpoints and both member-profile methods, including an
    authenticated GET and PATCH, before deploying the dependent static app.

@@ -177,8 +177,8 @@ function register_rest_route(string $namespace, string $route, array $args): voi
 	$GLOBALS['mrc_routes'][$namespace . $route] = $args;
 }
 
-function register_user_meta(string $key, array $args): void {
-	$GLOBALS['mrc_registered_meta'][$key] = $args;
+function register_meta(string $object_type, string $key, array $args): void {
+	$GLOBALS['mrc_registered_meta'][$object_type][$key] = $args;
 }
 
 function add_action(string $hook, $callback): void {
@@ -407,8 +407,8 @@ assert_true(false === strpos($safe_error->message, 'database'), 'internal update
 $GLOBALS['mrc_update_error'] = null;
 
 MRC_Member_Profile_Controller::register_meta();
-assert_same(false, $GLOBALS['mrc_registered_meta']['mrc_phone']['show_in_rest'], 'phone meta remains private');
-assert_same(false, $GLOBALS['mrc_registered_meta']['mrc_membership_id']['show_in_rest'], 'membership meta remains private');
+assert_same(false, $GLOBALS['mrc_registered_meta']['user']['mrc_phone']['show_in_rest'], 'phone meta remains private');
+assert_same(false, $GLOBALS['mrc_registered_meta']['user']['mrc_membership_id']['show_in_rest'], 'membership meta remains private');
 
 // --- Atomic update contracts ---
 

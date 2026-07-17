@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   MEMBER_PROFILE_UPDATED_EVENT,
   getMemberProfile,
+  takeIfCurrentGeneration,
   type MemberProfile,
 } from "@/lib/wp-profile";
 
@@ -21,20 +22,41 @@ export function useMemberProfile(): MemberProfileState {
 
   useEffect(() => {
     let active = true;
+    let generation = 0;
 
     const loadProfile = () => {
+      const requestGeneration = ++generation;
+
       getMemberProfile()
         .then((nextProfile) => {
           if (!active) return;
-          setProfile(nextProfile);
+          const accepted = takeIfCurrentGeneration(
+            requestGeneration,
+            generation,
+            nextProfile
+          );
+          if (accepted === null) return;
+          setProfile(accepted);
           setError(null);
         })
         .catch((nextError: unknown) => {
           if (!active) return;
-          setError(nextError);
+          const accepted = takeIfCurrentGeneration(
+            requestGeneration,
+            generation,
+            nextError
+          );
+          if (accepted === null) return;
+          setError(accepted);
         })
         .finally(() => {
-          if (active) setLoading(false);
+          if (!active) return;
+          if (
+            takeIfCurrentGeneration(requestGeneration, generation, true) === null
+          ) {
+            return;
+          }
+          setLoading(false);
         });
     };
 

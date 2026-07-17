@@ -8,6 +8,7 @@ import {
   getMemberProfile,
   memberProfileErrorMessage,
   saveMemberProfile,
+  takeIfCurrentGeneration,
   type MemberProfile,
 } from "./wp-profile";
 
@@ -270,6 +271,76 @@ test("failed GET promises are cleared so the next request retries", async () => 
   await assert.rejects(getMemberProfile(true));
   assert.deepEqual(await getMemberProfile(), profile);
   assert.equal(calls, 2);
+});
+
+test("older failed forced GET does not clear a newer cached promise", async () => {
+  browserWindow.localStorage.setItem("wp_token", "jwt");
+  let call = 0;
+  let rejectOlder!: (error: unknown) => void;
+  let resolveNewer!: (response: Response) => void;
+
+  globalThis.fetch = async () => {
+    call += 1;
+    if (call === 1) {
+      return await new Promise<Response>((_resolve, reject) => {
+        rejectOlder = reject;
+      });
+    }
+    return await new Promise<Response>((resolve) => {
+      resolveNewer = resolve;
+    });
+  };
+
+  const older = getMemberProfile(true);
+  const newer = getMemberProfile(true);
+  assert.notEqual(older, newer);
+
+  resolveNewer(jsonResponse(profile));
+  assert.deepEqual(await newer, profile);
+
+  rejectOlder(new TypeError("offline"));
+  await assert.rejects(older);
+
+  let extraFetches = 0;
+  globalThis.fetch = async () => {
+    extraFetches += 1;
+    return jsonResponse({ ...profile, phone: "should-not-fetch" });
+  };
+  assert.deepEqual(await getMemberProfile(), profile);
+  assert.equal(extraFetches, 0);
+});
+
+test("older generation results are rejected after a newer profile update", () => {
+  let generation = 0;
+  let profileState: MemberProfile | null = null;
+  let errorState: unknown = null;
+
+  const applyLoad = (
+    requestGeneration: number,
+    result: { profile?: MemberProfile; error?: unknown }
+  ) => {
+    const accepted = takeIfCurrentGeneration(requestGeneration, generation, result);
+    if (accepted === null) return;
+    if ("error" in accepted && accepted.error !== undefined) {
+      errorState = accepted.error;
+      return;
+    }
+    profileState = accepted.profile ?? null;
+    errorState = null;
+  };
+
+  const initialGeneration = ++generation;
+  const updated = { ...profile, phone: "+15550999" };
+  const updateGeneration = ++generation;
+
+  applyLoad(updateGeneration, { profile: updated });
+  applyLoad(initialGeneration, { profile });
+  assert.deepEqual(profileState, updated);
+  assert.equal(errorState, null);
+
+  applyLoad(initialGeneration, { error: new Error("stale network failure") });
+  assert.deepEqual(profileState, updated);
+  assert.equal(errorState, null);
 });
 
 test("save updates cache and dispatches an update event only after valid success", async () => {

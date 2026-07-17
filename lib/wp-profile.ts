@@ -183,3 +183,15 @@ export function applyProfileDefaults<T extends Record<string, unknown>>(
 
   return result;
 }
+
+/**
+ * Returns value only when the request generation is still current.
+ * Lets useMemberProfile drop stale in-flight loads after a newer update.
+ */
+export function takeIfCurrentGeneration<T>(
+  requestGeneration: number,
+  currentGeneration: number,
+  value: T
+): T | null {
+  return requestGeneration === currentGeneration ? value : null;
+}

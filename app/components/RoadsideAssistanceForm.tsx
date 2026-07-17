@@ -14,6 +14,13 @@ import {
   type RequestCreated,
   type RoadsideRequestPayload,
 } from "../../lib/wp-requests";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { FormField } from "./ui/FormField";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
+import { StatusBanner } from "./ui/StatusBanner";
+import { Textarea } from "./ui/Textarea";
 
 const ROADSIDE_PHONE =
   (typeof process !== "undefined" &&
@@ -132,12 +139,20 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="ra-toggle-row">
-      <span className="ra-toggle-label">{label}</span>
-      <div className="ra-toggle" role="group" aria-label={label}>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-sm font-semibold text-slate-600">{label}</span>
+      <div
+        className="grid grid-cols-2 overflow-hidden rounded-xl border border-mrc-border"
+        role="group"
+        aria-label={label}
+      >
         <button
           type="button"
-          className={`ra-toggle-opt ${value ? "is-on" : ""}`}
+          className={
+            value
+              ? "min-h-11 min-w-20 bg-mrc-primary px-4 py-2.5 text-sm font-bold text-white focus-visible:z-10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+              : "min-h-11 min-w-20 bg-white px-4 py-2.5 text-sm font-bold text-mrc-text hover:bg-slate-50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          }
           onClick={() => onChange(true)}
           aria-pressed={value}
         >
@@ -145,7 +160,11 @@ function ToggleRow({
         </button>
         <button
           type="button"
-          className={`ra-toggle-opt ${!value ? "is-on" : ""}`}
+          className={
+            !value
+              ? "min-h-11 min-w-20 border-l border-mrc-border bg-mrc-primary px-4 py-2.5 text-sm font-bold text-white focus-visible:z-10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+              : "min-h-11 min-w-20 border-l border-mrc-border bg-white px-4 py-2.5 text-sm font-bold text-mrc-text hover:bg-slate-50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          }
           onClick={() => onChange(false)}
           aria-pressed={!value}
         >
@@ -431,269 +450,349 @@ export function RoadsideAssistanceForm() {
   }
 
   return (
-    <div className="ra-form-shell">
-      <header className="ra-form-header">
-        <div className="ra-form-header-icon" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <div className="rounded-3xl border border-mrc-primary/20 bg-[var(--mrc-gradient-panel)] p-3 shadow-[0_8px_28px_var(--mrc-shadow-primary)] sm:p-5 lg:p-6">
+      <header className="mb-5 flex flex-col items-center text-center">
+        <div
+          className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-mrc-primary/10 text-mrc-primary"
+          aria-hidden
+        >
+          <svg
+            className="size-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-2.7.6-4.5 1.1C10.7 11.3 10 12.1 10 13v3c0 .6.4 1 1 1h2" />
             <path d="M14 10a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v5" />
             <path d="M6 10v5" />
             <path d="M4 18h16" />
           </svg>
         </div>
-        <h2 className="ra-form-title">Roadside Assistance Request</h2>
-        <p className="ra-form-intro">
+        <h2 className="text-2xl font-bold text-mrc-text" id="roadside-request-title">
+          Roadside Assistance Request
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-mrc-muted">
           Complete the form below for the fastest dispatch. For emergencies, call us 24/7.
         </p>
-        <a className="ra-call-pill" href={telHref(ROADSIDE_PHONE)}>
+        <a
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-mrc-primary/30 bg-white px-4 py-2.5 text-sm font-bold text-mrc-primary transition hover:border-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          href={telHref(ROADSIDE_PHONE)}
+        >
           Call dispatch now
         </a>
       </header>
 
-      <form className="ra-form" onSubmit={onSubmit} noValidate>
-        <section className="ra-card">
-          <h3 className="ra-card-title">Select service type</h3>
-          <div className="ra-service-grid" role="list">
+      <form
+        className="space-y-4"
+        onSubmit={onSubmit}
+        noValidate
+        aria-labelledby="roadside-request-title"
+      >
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Select service type</h3>
+          <div
+            className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+            role="group"
+            aria-label="Select service type"
+          >
             {SERVICE_TYPES.map((s) => (
               <button
                 key={s.id}
                 type="button"
-                role="listitem"
-                className={`ra-service-tile ${serviceType === s.id ? "is-selected" : ""}`}
+                className={
+                  serviceType === s.id
+                    ? "flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border border-mrc-primary bg-mrc-primary/10 px-2 py-3 text-center text-sm font-bold text-mrc-primary shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+                    : "flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border border-mrc-border bg-white px-2 py-3 text-center text-sm font-bold text-mrc-text transition hover:border-mrc-primary hover:text-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+                }
                 onClick={() => setServiceType(s.id)}
                 aria-pressed={serviceType === s.id}
               >
-                <span className="ra-service-icon">{s.icon}</span>
-                <span className="ra-service-label">{s.label}</span>
+                <span className="size-6 [&>svg]:size-6" aria-hidden>
+                  {s.icon}
+                </span>
+                <span>{s.label}</span>
               </button>
             ))}
           </div>
-          <label className="ra-field">
-            <span className="ra-field-label">Service details</span>
-            <textarea
-              className="ra-textarea"
-              rows={4}
-              placeholder="Describe the problem (e.g. left headlight on, flat rear driver-side tire)"
-              value={serviceDetails}
-              onChange={(e) => setServiceDetails(e.target.value)}
-            />
-          </label>
-        </section>
-
-        <section className="ra-card">
-          <h3 className="ra-card-title">Customer information</h3>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">First name</span>
-              <input
-                className="ra-input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                autoComplete="given-name"
-                required
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Last name</span>
-              <input
-                className="ra-input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                autoComplete="family-name"
-                required
-              />
-            </label>
-          </div>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">Phone number</span>
-              <input
-                className="ra-input"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                autoComplete="tel"
-                required
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Email</span>
-              <input
-                className="ra-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </label>
-          </div>
-          <ToggleRow
-            label="Member?"
-            value={isMember}
-            onChange={(value) => {
-              memberToggleTouchedRef.current = true;
-              setIsMember(value);
-            }}
-          />
-          {isMember && (
-            <div className="ra-row-2 ra-mt">
-              <label className="ra-field">
-                <span className="ra-field-label">Account name</span>
-                <input
-                  className="ra-input"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                />
-              </label>
-              <label className="ra-field">
-                <span className="ra-field-label">Membership ID</span>
-                <input
-                  className="ra-input"
-                  value={membershipId}
-                  onChange={(e) => setMembershipId(e.target.value)}
-                />
-              </label>
-            </div>
-          )}
-        </section>
-
-        <section className="ra-card">
-          <h3 className="ra-card-title">Vehicle information</h3>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">Year</span>
-              <select
-                className="ra-select"
-                value={vehicleYear}
-                onChange={(e) => setVehicleYear(e.target.value)}
-              >
-                <option value="">Select year</option>
-                {YEARS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Make</span>
-              <input
-                className="ra-input"
-                value={vehicleMake}
-                onChange={(e) => setVehicleMake(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">Model</span>
-              <input
-                className="ra-input"
-                value={vehicleModel}
-                onChange={(e) => setVehicleModel(e.target.value)}
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Color</span>
-              <input
-                className="ra-input"
-                value={vehicleColor}
-                onChange={(e) => setVehicleColor(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">VIN</span>
-              <input
-                className="ra-input"
-                value={vin}
-                onChange={(e) => setVin(e.target.value)}
+          <FormField id="roadside-service-details" label="Service details" className="mt-4">
+            {(controlProps) => (
+              <Textarea
+                {...controlProps}
+                rows={4}
+                placeholder="Describe the problem (e.g. left headlight on, flat rear driver-side tire)"
+                value={serviceDetails}
+                onChange={(e) => setServiceDetails(e.target.value)}
                 autoComplete="off"
               />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">License plate</span>
-              <input
-                className="ra-input"
-                value={plate}
-                onChange={(e) => setPlate(e.target.value)}
-              />
-            </label>
-          </div>
-          <ToggleRow
-            label="Vehicle is at a safe location?"
-            value={safeLocation}
-            onChange={setSafeLocation}
-          />
-        </section>
+            )}
+          </FormField>
+        </Card>
 
-        <section className="ra-card">
-          <h3 className="ra-card-title">Service location (current location)</h3>
-          <button
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Customer information</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField id="roadside-first-name" label="First name" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-last-name" label="Last name" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-phone" label="Phone number" required>
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="tel"
+                  required
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-email" label="Email">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              )}
+            </FormField>
+          </div>
+          <div className="mt-4">
+            <ToggleRow
+              label="Member?"
+              value={isMember}
+              onChange={(value) => {
+                memberToggleTouchedRef.current = true;
+                setIsMember(value);
+              }}
+            />
+          </div>
+          {isMember && (
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormField id="roadside-account-name" label="Account name">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    autoComplete="name"
+                  />
+                )}
+              </FormField>
+              <FormField id="roadside-membership-id" label="Membership ID">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    value={membershipId}
+                    onChange={(e) => setMembershipId(e.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                )}
+              </FormField>
+            </div>
+          )}
+        </Card>
+
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Vehicle information</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField id="roadside-vehicle-year" label="Year">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={vehicleYear}
+                  onChange={(e) => setVehicleYear(e.target.value)}
+                  autoComplete="off"
+                >
+                  <option value="">Select year</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+            <FormField id="roadside-vehicle-make" label="Make">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={vehicleMake}
+                  onChange={(e) => setVehicleMake(e.target.value)}
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-vehicle-model" label="Model">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={vehicleModel}
+                  onChange={(e) => setVehicleModel(e.target.value)}
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-vehicle-color" label="Color">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={vehicleColor}
+                  onChange={(e) => setVehicleColor(e.target.value)}
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-vin" label="VIN">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={vin}
+                  onChange={(e) => setVin(e.target.value)}
+                  maxLength={17}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-license-plate" label="License plate">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={plate}
+                  onChange={(e) => setPlate(e.target.value)}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                />
+              )}
+            </FormField>
+          </div>
+          <div className="mt-4">
+            <ToggleRow
+              label="Vehicle is at a safe location?"
+              value={safeLocation}
+              onChange={setSafeLocation}
+            />
+          </div>
+        </Card>
+
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">
+            Service location (current location)
+          </h3>
+          <Button
             type="button"
-            className="ra-btn ra-btn-orange"
             onClick={getServiceLocation}
-            disabled={serviceGpsLoading}
+            loading={serviceGpsLoading}
+            className="w-full sm:w-auto"
           >
             {serviceGpsLoading ? "Getting location…" : "Get current GPS location"}
-          </button>
+          </Button>
           {serviceGpsError && (
-            <p className="ra-inline-error" role="alert">
+            <p className="mt-2 text-sm text-red-700" role="alert">
               {serviceGpsError}
             </p>
           )}
-          <div className="ra-row-2 ra-mt">
-            <label className="ra-field ra-field-full">
-              <span className="ra-field-label">Address</span>
-              <input
-                className="ra-input"
-                value={serviceAddress}
-                onChange={(e) => setServiceAddress(e.target.value)}
-                autoComplete="street-address"
-              />
-            </label>
+          <div className="mt-4">
+            <FormField id="roadside-service-address" label="Address">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={serviceAddress}
+                  onChange={(e) => setServiceAddress(e.target.value)}
+                  autoComplete="section-service street-address"
+                />
+              )}
+            </FormField>
           </div>
-          <div className="ra-row-3">
-            <label className="ra-field">
-              <span className="ra-field-label">City</span>
-              <input
-                className="ra-input"
-                value={serviceCity}
-                onChange={(e) => setServiceCity(e.target.value)}
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">State</span>
-              <input
-                className="ra-input"
-                value={serviceState}
-                onChange={(e) => setServiceState(e.target.value)}
-              />
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">ZIP code</span>
-              <input
-                className="ra-input"
-                value={serviceZip}
-                onChange={(e) => setServiceZip(e.target.value)}
-              />
-            </label>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <FormField id="roadside-service-city" label="City">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={serviceCity}
+                  onChange={(e) => setServiceCity(e.target.value)}
+                  autoComplete="section-service address-level2"
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-service-state" label="State">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  value={serviceState}
+                  onChange={(e) => setServiceState(e.target.value)}
+                  autoComplete="section-service address-level1"
+                />
+              )}
+            </FormField>
+            <FormField id="roadside-service-zip" label="ZIP code">
+              {(controlProps) => (
+                <Input
+                  {...controlProps}
+                  type="text"
+                  inputMode="numeric"
+                  value={serviceZip}
+                  onChange={(e) => setServiceZip(e.target.value)}
+                  autoComplete="section-service postal-code"
+                />
+              )}
+            </FormField>
           </div>
           {serviceCoords && (
             <>
-              <div className="ra-map-wrap">
+              <div className="mt-4 overflow-hidden rounded-xl border border-mrc-border">
                 <iframe
+                  className="h-64 w-full"
                   title="Service location on map"
                   src={googleMapsEmbedUrl(serviceCoords.lat, serviceCoords.lng)}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
-              <p className="ra-coords">
+              <p className="mt-2 text-sm text-mrc-muted">
                 GPS: {serviceCoords.lat.toFixed(6)}, {serviceCoords.lng.toFixed(6)}{" "}
                 <a
-                  className="ra-link"
+                  className="font-semibold text-mrc-primary underline-offset-2 hover:underline"
                   href={googleMapsUrl(serviceCoords.lat, serviceCoords.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -703,135 +802,152 @@ export function RoadsideAssistanceForm() {
               </p>
             </>
           )}
-        </section>
+        </Card>
 
         {showTowingDest && (
-          <section className="ra-card">
-            <h3 className="ra-card-title">Drop-off location (for towing)</h3>
-            <button
+          <Card as="section">
+            <h3 className="mb-4 text-lg font-bold text-mrc-text">
+              Drop-off location (for towing)
+            </h3>
+            <Button
               type="button"
-              className="ra-btn ra-btn-blue"
+              variant="secondary"
               onClick={getDestLocation}
-              disabled={destGpsLoading}
+              loading={destGpsLoading}
+              className="w-full sm:w-auto"
             >
               {destGpsLoading ? "Getting location…" : "Select destination location"}
-            </button>
+            </Button>
             {destGpsError && (
-              <p className="ra-inline-error" role="alert">
+              <p className="mt-2 text-sm text-red-700" role="alert">
                 {destGpsError}
               </p>
             )}
-            <div className="ra-row-2 ra-mt">
-              <label className="ra-field ra-field-full">
-                <span className="ra-field-label">Destination address</span>
-                <input
-                  className="ra-input"
-                  value={destAddress}
-                  onChange={(e) => setDestAddress(e.target.value)}
-                />
-              </label>
+            <div className="mt-4">
+              <FormField id="roadside-destination-address" label="Destination address">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    value={destAddress}
+                    onChange={(e) => setDestAddress(e.target.value)}
+                    autoComplete="section-destination street-address"
+                  />
+                )}
+              </FormField>
             </div>
-            <div className="ra-row-3">
-              <label className="ra-field">
-                <span className="ra-field-label">City</span>
-                <input
-                  className="ra-input"
-                  value={destCity}
-                  onChange={(e) => setDestCity(e.target.value)}
-                />
-              </label>
-              <label className="ra-field">
-                <span className="ra-field-label">State</span>
-                <input
-                  className="ra-input"
-                  value={destState}
-                  onChange={(e) => setDestState(e.target.value)}
-                />
-              </label>
-              <label className="ra-field">
-                <span className="ra-field-label">ZIP code</span>
-                <input
-                  className="ra-input"
-                  value={destZip}
-                  onChange={(e) => setDestZip(e.target.value)}
-                />
-              </label>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <FormField id="roadside-destination-city" label="Destination city">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    value={destCity}
+                    onChange={(e) => setDestCity(e.target.value)}
+                    autoComplete="section-destination address-level2"
+                  />
+                )}
+              </FormField>
+              <FormField id="roadside-destination-state" label="Destination state">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    value={destState}
+                    onChange={(e) => setDestState(e.target.value)}
+                    autoComplete="section-destination address-level1"
+                  />
+                )}
+              </FormField>
+              <FormField id="roadside-destination-zip" label="Destination ZIP code">
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    type="text"
+                    inputMode="numeric"
+                    value={destZip}
+                    onChange={(e) => setDestZip(e.target.value)}
+                    autoComplete="section-destination postal-code"
+                  />
+                )}
+              </FormField>
             </div>
             {destCoords && (
               <>
-                <div className="ra-map-wrap">
+                <div className="mt-4 overflow-hidden rounded-xl border border-mrc-border">
                   <iframe
+                    className="h-64 w-full"
                     title="Destination on map"
                     src={googleMapsEmbedUrl(destCoords.lat, destCoords.lng)}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                   />
                 </div>
-                <p className="ra-coords">
+                <p className="mt-2 text-sm text-mrc-muted">
                   GPS: {destCoords.lat.toFixed(6)}, {destCoords.lng.toFixed(6)}
                 </p>
               </>
             )}
-          </section>
+          </Card>
         )}
 
-        <section className="ra-card">
-          <h3 className="ra-card-title">Additional options</h3>
-          <div className="ra-row-2">
-            <label className="ra-field">
-              <span className="ra-field-label">Number of passengers</span>
-              <select
-                className="ra-select"
-                value={passengers}
-                onChange={(e) => setPassengers(e.target.value)}
-              >
-                <option value="">Select</option>
-                {PASSENGERS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ra-field">
-              <span className="ra-field-label">Vehicle drive type</span>
-              <select
-                className="ra-select"
-                value={driveType}
-                onChange={(e) => setDriveType(e.target.value)}
-              >
-                <option value="">Select</option>
-                {DRIVE_TYPES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <Card as="section">
+          <h3 className="mb-4 text-lg font-bold text-mrc-text">Additional options</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField id="roadside-passengers" label="Number of passengers">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={passengers}
+                  onChange={(e) => setPassengers(e.target.value)}
+                >
+                  <option value="">Select</option>
+                  {PASSENGERS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+            <FormField id="roadside-drive-type" label="Vehicle drive type">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={driveType}
+                  onChange={(e) => setDriveType(e.target.value)}
+                >
+                  <option value="">Select</option>
+                  {DRIVE_TYPES.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
           </div>
-          <ToggleRow
-            label="Are you with the vehicle?"
-            value={withVehicle}
-            onChange={setWithVehicle}
-          />
-        </section>
+          <div className="mt-4">
+            <ToggleRow
+              label="Are you with the vehicle?"
+              value={withVehicle}
+              onChange={setWithVehicle}
+            />
+          </div>
+        </Card>
 
-        {submitError && (
-          <p className="ra-banner-error" role="alert">
-            {submitError}
-          </p>
-        )}
+        {submitError && <StatusBanner tone="error">{submitError}</StatusBanner>}
         {submitOk && (
-          <p className="ra-banner-success" role="status">
+          <StatusBanner tone="success">
             Thank you. Your request was received. Reference: {submitOk.reference}. If you need
             immediate help, call dispatch.
-          </p>
+          </StatusBanner>
         )}
 
-        <button type="submit" className="ra-submit" disabled={submitting}>
+        <Button type="submit" loading={submitting} className="w-full">
           {submitting ? "Submitting…" : "Submit service request"}
-        </button>
-        <p className="ra-disclaimer">
+        </Button>
+        <p className="text-center text-xs leading-5 text-mrc-muted">
           By submitting, you agree we may contact you about this request using the information
           provided. Service subject to membership and program terms.
         </p>

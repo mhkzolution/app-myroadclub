@@ -303,7 +303,7 @@ export function AccountMenu() {
                   </div>
                   <a
                     href="/profile"
-                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--mrc-gradient-btn)] px-4 py-2.5 text-sm font-bold text-white shadow-[0_4px_14px_var(--mrc-shadow-primary)] transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-mrc-gradient-btn px-4 py-2.5 text-sm font-bold text-white shadow-[0_4px_14px_var(--mrc-shadow-primary)] transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
                   >
                     View profile
                   </a>

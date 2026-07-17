@@ -450,7 +450,7 @@ export function RoadsideAssistanceForm() {
   }
 
   return (
-    <div className="rounded-3xl border border-mrc-primary/20 bg-[var(--mrc-gradient-panel)] p-3 shadow-[0_8px_28px_var(--mrc-shadow-primary)] sm:p-5 lg:p-6">
+    <div className="rounded-3xl border border-mrc-primary/20 bg-mrc-gradient-panel p-3 shadow-[0_8px_28px_var(--mrc-shadow-primary)] sm:p-5 lg:p-6">
       <header className="mb-5 flex flex-col items-center text-center">
         <div
           className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-mrc-primary/10 text-mrc-primary"

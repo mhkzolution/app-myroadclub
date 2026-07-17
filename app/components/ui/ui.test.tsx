@@ -82,6 +82,13 @@ describe("shared UI", () => {
     expect(screen.getByRole("button")).toHaveAttribute("aria-busy", "true");
   });
 
+  test("primary buttons use the brand gradient utility", () => {
+    render(<Button>Submit</Button>);
+    expect(screen.getByRole("button", { name: "Submit" }).className).toMatch(
+      /bg-mrc-gradient-btn/
+    );
+  });
+
   test("uses alert for errors and status for success", () => {
     const { rerender } = render(<StatusBanner tone="error">Failed</StatusBanner>);
     expect(screen.getByRole("alert")).toHaveTextContent("Failed");

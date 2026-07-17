@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { joinClasses } from "./classNames";
 
 const variants = {
-  primary: "bg-[var(--mrc-gradient-btn)] text-white shadow-[0_4px_14px_var(--mrc-shadow-primary)]",
+  primary: "bg-mrc-gradient-btn text-white shadow-[0_4px_14px_var(--mrc-shadow-primary)]",
   secondary: "border border-mrc-border bg-white text-mrc-text hover:border-mrc-primary",
   danger: "bg-mrc-danger text-white",
 } as const;

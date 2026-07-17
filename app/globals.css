@@ -14,8 +14,7 @@
 }
 
 /* My Road Club brand — aligned with https://myroadclub.com/ (primary #00a0e3, cyan #39c8df).
-   These variables and gradients are consumed through arbitrary Tailwind utilities
-   (e.g. bg-[var(--mrc-gradient-panel)], shadow-[0_8px_28px_var(--mrc-shadow-primary)]). */
+   Gradients must use background-image (Tailwind `bg-*` sets background-color only). */
 :root {
   --mrc-primary: #00a0e3;
   --mrc-primary-dark: #009fe6;
@@ -30,6 +29,16 @@
   --mrc-gradient-btn: linear-gradient(to right, var(--mrc-primary-dark) 0%, var(--mrc-cyan) 50%, var(--mrc-primary-dark) 100%);
   --mrc-gradient-panel: linear-gradient(180deg, var(--mrc-tint) 0%, #d4f0ff 38%, var(--mrc-surface-soft) 100%);
   --mrc-shadow-primary: rgba(0, 160, 227, 0.18);
+}
+
+@utility bg-mrc-gradient-btn {
+  background-color: var(--mrc-primary);
+  background-image: var(--mrc-gradient-btn);
+}
+
+@utility bg-mrc-gradient-panel {
+  background-color: var(--mrc-surface-soft);
+  background-image: var(--mrc-gradient-panel);
 }
 
 /* Minimal base sizing plus iOS safe-area inset so scrollable content clears the

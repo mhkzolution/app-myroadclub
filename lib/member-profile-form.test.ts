@@ -7,6 +7,7 @@ import {
   applyTicketProfileDefaults,
   resolveRoadsideMemberToggleDefault,
   takeFirstRequestFormProfileDefaults,
+  validateMemberProfileFields,
   validateMemberProfileInput,
 } from "./member-profile-form";
 import type { MemberProfile, MemberProfileInput } from "./wp-profile";
@@ -94,6 +95,16 @@ const validInput: MemberProfileInput = {
   email: "ada@example.com",
   phone: "+1 555 0100",
 };
+
+test("profile field validation identifies only invalid fields", () => {
+  assert.deepEqual(
+    validateMemberProfileFields({ ...validInput, firstName: "", email: "bad" }),
+    {
+      firstName: "First name is required.",
+      email: "Enter a valid email address.",
+    }
+  );
+});
 
 test("profile validation accepts server-bounded valid input", () => {
   assert.equal(validateMemberProfileInput(validInput), null);

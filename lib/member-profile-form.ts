@@ -93,31 +93,41 @@ function length(value: string): number {
   return Array.from(value).length;
 }
 
-export function validateMemberProfileInput(
+export function validateMemberProfileFields(
   input: MemberProfileInput
-): string | null {
-  const firstName = input.firstName.trim();
-  const lastName = input.lastName.trim();
-  const displayName = input.displayName.trim();
-  const email = input.email.trim();
+): Partial<Record<keyof MemberProfileInput, string>> {
+  const errors: Partial<Record<keyof MemberProfileInput, string>> = {};
+  const values: MemberProfileInput = {
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    displayName: input.displayName.trim(),
+    email: input.email.trim(),
+    phone: input.phone.trim(),
+  };
 
-  if (!firstName) return "First name is required.";
-  if (!lastName) return "Last name is required.";
-  if (!displayName) return "Display name is required.";
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return "Enter a valid email address.";
+  if (!values.firstName) errors.firstName = "First name is required.";
+  if (!values.lastName) errors.lastName = "Last name is required.";
+  if (!values.displayName) errors.displayName = "Display name is required.";
+  if (!values.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+    errors.email = "Enter a valid email address.";
   }
 
   for (const [field, limit] of Object.entries(LIMITS) as Array<
     [keyof MemberProfileInput, number]
   >) {
-    if (length(input[field].trim()) > limit) {
-      const label = field.replace(/([A-Z])/g, " $1").toLowerCase();
-      return `${label.charAt(0).toUpperCase()}${label.slice(
-        1
-      )} must be ${limit} characters or fewer.`;
-    }
+    if (length(values[field]) <= limit || errors[field]) continue;
+    const label = field.replace(/([A-Z])/g, " $1").toLowerCase();
+    errors[field] = `${label.charAt(0).toUpperCase()}${label.slice(
+      1
+    )} must be ${limit} characters or fewer.`;
   }
 
-  return null;
+  return errors;
+}
+
+export function validateMemberProfileInput(
+  input: MemberProfileInput
+): string | null {
+  const errors = validateMemberProfileFields(input);
+  return (Object.values(errors)[0] as string | undefined) ?? null;
 }

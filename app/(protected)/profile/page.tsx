@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/app/components/ui/Button";
+import { Card } from "@/app/components/ui/Card";
+import { FormField } from "@/app/components/ui/FormField";
+import { Input } from "@/app/components/ui/Input";
+import { StatusBanner } from "@/app/components/ui/StatusBanner";
 import { useMemberProfile } from "@/app/hooks/useMemberProfile";
 import {
   applyEditableProfileDefaults,
-  validateMemberProfileInput,
+  validateMemberProfileFields,
 } from "@/lib/member-profile-form";
 import {
-  MemberProfileError,
   memberProfileErrorMessage,
   saveMemberProfile,
   type MemberProfileInput,
@@ -28,7 +32,9 @@ export default function ProfilePage() {
   const [form, setForm] = useState<MemberProfileInput>(EMPTY_PROFILE);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [fieldsInvalid, setFieldsInvalid] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof MemberProfileInput, string>>
+  >({});
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -39,7 +45,12 @@ export default function ProfilePage() {
   function changeField(field: keyof MemberProfileInput, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setSaveError(null);
-    setFieldsInvalid(false);
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
     setSaved(false);
   }
 
@@ -47,12 +58,13 @@ export default function ProfilePage() {
     event.preventDefault();
     setSaved(false);
     setSaveError(null);
-    setFieldsInvalid(false);
+    setFieldErrors({});
 
-    const validationError = validateMemberProfileInput(form);
-    if (validationError) {
-      setSaveError(validationError);
-      setFieldsInvalid(true);
+    const validationErrors = validateMemberProfileFields(form);
+    const firstValidationError = Object.values(validationErrors)[0];
+    if (firstValidationError) {
+      setSaveError(firstValidationError);
+      setFieldErrors(validationErrors);
       return;
     }
 
@@ -69,147 +81,196 @@ export default function ProfilePage() {
       setSaved(true);
     } catch (error) {
       setSaveError(memberProfileErrorMessage(error));
-      setFieldsInvalid(
-        error instanceof MemberProfileError && error.kind === "validation"
-      );
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <main className="mrc-profile-page">
-      <div className="mrc-profile-shell">
-        <Link className="mrc-profile-back" href="/">
+    <main className="min-h-dvh bg-mrc-soft px-4 py-6 md:py-10">
+      <div className="mx-auto w-full max-w-3xl">
+        <Link
+          className="inline-flex min-h-11 items-center rounded-lg text-sm font-bold text-mrc-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          href="/"
+        >
           ← Back to home
         </Link>
 
-        <header className="mrc-profile-header">
-          <p className="mrc-profile-kicker">My Road Club</p>
-          <h1>Member profile</h1>
-          <p>Keep your contact information current for faster member support.</p>
+        <header className="mb-5 mt-3">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-mrc-primary">
+            My Road Club
+          </p>
+          <h1 className="mt-1 text-2xl font-bold text-mrc-text md:text-3xl">
+            Member profile
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-mrc-muted">
+            Keep your contact information current for faster member support.
+          </p>
         </header>
 
         {loading && !profile && (
-          <div className="mrc-profile-card mrc-profile-state" role="status">
-            <span className="mrc-profile-spinner" aria-hidden />
-            Loading your profile…
-          </div>
+          <Card className="flex min-h-32 items-center justify-center gap-3" role="status">
+            <span
+              className="size-6 animate-spin rounded-full border-2 border-slate-200 border-t-mrc-primary motion-reduce:animate-none"
+              aria-hidden
+            />
+            <span className="text-sm text-mrc-muted">Loading your profile…</span>
+          </Card>
         )}
 
         {loadError && !profile && (
-          <div className="mrc-profile-card">
-            <p className="ra-banner-error" role="alert">
-              {memberProfileErrorMessage(loadError)}
-            </p>
-            <Link className="mrc-profile-secondary" href="/login">
+          <Card>
+            <StatusBanner tone="error">{memberProfileErrorMessage(loadError)}</StatusBanner>
+            <Link
+              className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-mrc-border bg-white px-4 py-2.5 text-sm font-bold text-mrc-text focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+              href="/login"
+            >
               Sign in again
             </Link>
-          </div>
+          </Card>
         )}
 
         {profile && (
-          <form
-            className="mrc-profile-card"
-            onSubmit={onSubmit}
-            noValidate
-            aria-busy={saving || undefined}
+          <Card
+            as="section"
+            className="p-4 md:p-6"
           >
-            <section className="mrc-profile-readonly" aria-label="Membership details">
-              <div>
-                <span>Username</span>
-                <strong>{profile.username}</strong>
+            <form onSubmit={onSubmit} noValidate aria-busy={saving || undefined}>
+              <section
+                className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-4 md:grid-cols-2"
+                aria-label="Membership details"
+              >
+                <div>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-mrc-muted">
+                    Username
+                  </span>
+                  <strong className="mt-1 block break-words text-sm text-mrc-text">
+                    {profile.username}
+                  </strong>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-mrc-muted">
+                    Membership ID
+                  </span>
+                  <strong className="mt-1 block break-words text-sm text-mrc-text">
+                    {profile.membershipId || "Not assigned"}
+                  </strong>
+                </div>
+              </section>
+
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  id="profile-first-name"
+                  label="First name"
+                  error={fieldErrors.firstName}
+                >
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      type="text"
+                      value={form.firstName}
+                      onChange={(event) => changeField("firstName", event.target.value)}
+                      autoComplete="given-name"
+                      maxLength={100}
+                      disabled={saving}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="profile-last-name"
+                  label="Last name"
+                  error={fieldErrors.lastName}
+                >
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      type="text"
+                      value={form.lastName}
+                      onChange={(event) => changeField("lastName", event.target.value)}
+                      autoComplete="family-name"
+                      maxLength={100}
+                      disabled={saving}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="profile-display-name"
+                  label="Display name"
+                  error={fieldErrors.displayName}
+                  className="md:col-span-2"
+                >
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      type="text"
+                      value={form.displayName}
+                      onChange={(event) => changeField("displayName", event.target.value)}
+                      autoComplete="name"
+                      maxLength={100}
+                      disabled={saving}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="profile-email"
+                  label="Email"
+                  error={fieldErrors.email}
+                  className="md:col-span-2"
+                >
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      type="email"
+                      inputMode="email"
+                      value={form.email}
+                      onChange={(event) => changeField("email", event.target.value)}
+                      autoComplete="email"
+                      maxLength={254}
+                      disabled={saving}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="profile-phone"
+                  label="Phone number"
+                  error={fieldErrors.phone}
+                  className="md:col-span-2"
+                >
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      type="tel"
+                      inputMode="tel"
+                      value={form.phone}
+                      onChange={(event) => changeField("phone", event.target.value)}
+                      autoComplete="tel"
+                      maxLength={40}
+                      disabled={saving}
+                    />
+                  )}
+                </FormField>
               </div>
-              <div>
-                <span>Membership ID</span>
-                <strong>{profile.membershipId || "Not assigned"}</strong>
-              </div>
-            </section>
 
-            <div className="mrc-profile-grid">
-              <label className="ra-field">
-                <span className="ra-field-label">First name</span>
-                <input
-                  className="ra-input"
-                  value={form.firstName}
-                  onChange={(event) => changeField("firstName", event.target.value)}
-                  autoComplete="given-name"
-                  maxLength={100}
-                  disabled={saving}
-                  required
-                  aria-invalid={fieldsInvalid || undefined}
-                />
-              </label>
-              <label className="ra-field">
-                <span className="ra-field-label">Last name</span>
-                <input
-                  className="ra-input"
-                  value={form.lastName}
-                  onChange={(event) => changeField("lastName", event.target.value)}
-                  autoComplete="family-name"
-                  maxLength={100}
-                  disabled={saving}
-                  required
-                  aria-invalid={fieldsInvalid || undefined}
-                />
-              </label>
-              <label className="ra-field mrc-profile-full">
-                <span className="ra-field-label">Display name</span>
-                <input
-                  className="ra-input"
-                  value={form.displayName}
-                  onChange={(event) => changeField("displayName", event.target.value)}
-                  autoComplete="name"
-                  maxLength={100}
-                  disabled={saving}
-                  required
-                  aria-invalid={fieldsInvalid || undefined}
-                />
-              </label>
-              <label className="ra-field mrc-profile-full">
-                <span className="ra-field-label">Email</span>
-                <input
-                  className="ra-input"
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => changeField("email", event.target.value)}
-                  autoComplete="email"
-                  maxLength={254}
-                  disabled={saving}
-                  required
-                  aria-invalid={fieldsInvalid || undefined}
-                />
-              </label>
-              <label className="ra-field mrc-profile-full">
-                <span className="ra-field-label">Phone number</span>
-                <input
-                  className="ra-input"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(event) => changeField("phone", event.target.value)}
-                  autoComplete="tel"
-                  maxLength={40}
-                  disabled={saving}
-                  aria-invalid={fieldsInvalid || undefined}
-                />
-              </label>
-            </div>
+              {saveError && (
+                <StatusBanner tone="error" className="mt-5">
+                  {saveError}
+                </StatusBanner>
+              )}
+              {saved && (
+                <StatusBanner tone="success" className="mt-5">
+                  Your profile has been updated.
+                </StatusBanner>
+              )}
 
-            {saveError && (
-              <p className="ra-banner-error" role="alert">
-                {saveError}
-              </p>
-            )}
-            {saved && (
-              <p className="ra-banner-success" role="status">
-                Your profile has been updated.
-              </p>
-            )}
-
-            <button className="ra-submit" type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save profile"}
-            </button>
-          </form>
+              <Button type="submit" loading={saving} className="mt-5 w-full md:w-auto">
+                {saving ? "Saving…" : "Save profile"}
+              </Button>
+            </form>
+          </Card>
         )}
       </div>
     </main>

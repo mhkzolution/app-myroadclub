@@ -13,14 +13,12 @@ export const metadata: Metadata = {
   description: "Member services — tickets, roadside assistance, and travel",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${roboto.className} min-h-dvh bg-mrc-soft text-mrc-text antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

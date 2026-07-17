@@ -1,3 +1,18 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-mrc-primary: var(--mrc-primary);
+  --color-mrc-primary-dark: var(--mrc-primary-dark);
+  --color-mrc-cyan: var(--mrc-cyan);
+  --color-mrc-danger: var(--mrc-red);
+  --color-mrc-text: var(--mrc-text);
+  --color-mrc-muted: var(--mrc-text-secondary);
+  --color-mrc-border: var(--mrc-border);
+  --color-mrc-surface: var(--mrc-surface);
+  --color-mrc-soft: var(--mrc-surface-soft);
+  --color-mrc-tint: var(--mrc-tint);
+}
+
 *,
 *::before,
 *::after {

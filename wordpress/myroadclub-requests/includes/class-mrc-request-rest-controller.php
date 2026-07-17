@@ -118,8 +118,7 @@ class MRC_Request_REST_Controller {
 			}
 		}
 
-		$meta_result = update_post_meta( $post_id, '_mrc_attachment_ids', $created_attachment_ids );
-		if ( false === $meta_result || is_wp_error( $meta_result ) ) {
+		if ( ! self::persist_post_meta( $post_id, '_mrc_attachment_ids', $created_attachment_ids ) ) {
 			self::rollback( $post_id, $created_attachment_ids );
 			return self::storage_error();
 		}
@@ -353,6 +352,43 @@ class MRC_Request_REST_Controller {
 	}
 
 	/**
+	 * Update post meta without treating an unchanged value as failure.
+	 *
+	 * WordPress returns false from update_post_meta when the stored value is
+	 * already identical. Verify the key exists and matches before failing.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $key     Meta key.
+	 * @param mixed  $value   Intended meta value.
+	 * @return bool
+	 */
+	public static function persist_post_meta( int $post_id, string $key, $value ): bool {
+		$result = update_post_meta( $post_id, $key, $value );
+		if ( is_wp_error( $result ) ) {
+			return false;
+		}
+		if ( false !== $result ) {
+			return true;
+		}
+		if ( ! metadata_exists( 'post', $post_id, $key ) ) {
+			return false;
+		}
+
+		$stored = get_post_meta( $post_id, $key, true );
+		return self::meta_values_equivalent( $stored, $value );
+	}
+
+	/**
+	 * Compare stored meta against the intended normalized value.
+	 *
+	 * @param mixed $stored   Value returned by get_post_meta.
+	 * @param mixed $intended Value passed to update_post_meta.
+	 */
+	private static function meta_values_equivalent( $stored, $intended ): bool {
+		return $stored == $intended; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison -- match WP meta normalization.
+	}
+
+	/**
 	 * Persist a pending request and assign its reference title.
 	 *
 	 * @param string               $post_type Request post type.
@@ -376,8 +412,7 @@ class MRC_Request_REST_Controller {
 		}
 
 		foreach ( $meta as $key => $value ) {
-			$result = update_post_meta( $post_id, $key, $value );
-			if ( false === $result || is_wp_error( $result ) ) {
+			if ( ! self::persist_post_meta( $post_id, $key, $value ) ) {
 				wp_delete_post( $post_id, true );
 				return self::storage_error();
 			}

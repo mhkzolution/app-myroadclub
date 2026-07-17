@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+
+import { clearAuthTokens, getAuthToken, logout } from "@/lib/auth";
 
 const MAIN_SITE = "https://myroadclub.com/";
 
 export function AccountMenu() {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -33,7 +33,7 @@ export function AccountMenu() {
   }, [open, close]);
 
   useEffect(() => {
-    const token = localStorage.getItem("wp_token");
+    const token = getAuthToken();
 
     if (!token) return;
 
@@ -47,7 +47,7 @@ export function AccountMenu() {
         setUser(data);
       })
       .catch(() => {
-        localStorage.removeItem("wp_token");
+        clearAuthTokens();
       });
   }, []);
 
@@ -227,9 +227,8 @@ export function AccountMenu() {
               <button
                 className="mrc-btn-danger"
                 onClick={() => {
-                  localStorage.removeItem("wp_token");
                   setUser(null);
-                  window.location.href = "/login";
+                  logout();
                 }}
               >
                 Logout

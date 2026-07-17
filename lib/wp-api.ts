@@ -1,4 +1,5 @@
+import { getAuthToken } from "./auth";
+
 export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("wp_token");
+  return getAuthToken();
 }

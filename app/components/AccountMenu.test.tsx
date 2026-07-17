@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { AccountMenu } from "./AccountMenu";
@@ -26,6 +26,7 @@ describe("AccountMenu", () => {
     authState.hasToken = false;
     logoutMock.mockReset();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -99,5 +100,58 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("dialog", { name: "Logout" })).not.toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "My Account" })).toBeInTheDocument();
     expect(logoutTrigger).toHaveFocus();
+  });
+
+  test("Tab and Shift+Tab wrap within the open account drawer", async () => {
+    const user = userEvent.setup();
+    render(<AccountMenu />);
+    const trigger = screen.getByRole("button", { name: /my account/i });
+    await user.click(trigger);
+
+    const drawer = await screen.findByRole("dialog", { name: "My Account" });
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    await waitFor(() => expect(closeButton).toHaveFocus());
+
+    const lastFocusable = screen.getByRole("link", { name: "866-840-1070" });
+    lastFocusable.focus();
+    expect(lastFocusable).toHaveFocus();
+
+    await user.tab();
+    expect(closeButton).toHaveFocus();
+    expect(drawer.contains(document.activeElement)).toBe(true);
+    expect(trigger).not.toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(lastFocusable).toHaveFocus();
+    expect(drawer.contains(document.activeElement)).toBe(true);
+    expect(trigger).not.toHaveFocus();
+  });
+
+  test("Tab and Shift+Tab wrap within the logout confirmation dialog", async () => {
+    authState.hasToken = true;
+    const user = userEvent.setup();
+    render(<AccountMenu />);
+    await user.click(screen.getByRole("button", { name: /my account/i }));
+
+    const logoutTrigger = await screen.findByRole("button", { name: "Logout" });
+    await user.click(logoutTrigger);
+
+    const logoutDialog = screen.getByRole("dialog", { name: "Logout" });
+    const cancelButton = within(logoutDialog).getByRole("button", { name: "Cancel" });
+    const confirmLogout = within(logoutDialog).getByRole("button", { name: "Logout" });
+    await waitFor(() => expect(cancelButton).toHaveFocus());
+
+    await user.tab();
+    expect(confirmLogout).toHaveFocus();
+    expect(logoutDialog.contains(document.activeElement)).toBe(true);
+
+    await user.tab();
+    expect(cancelButton).toHaveFocus();
+    expect(logoutDialog.contains(document.activeElement)).toBe(true);
+    expect(logoutTrigger).not.toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(confirmLogout).toHaveFocus();
+    expect(logoutDialog.contains(document.activeElement)).toBe(true);
   });
 });

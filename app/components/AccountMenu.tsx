@@ -14,6 +14,58 @@ import { FormField } from "./ui/FormField";
 import { Input } from "./ui/Input";
 import { StatusBanner } from "./ui/StatusBanner";
 
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(", ");
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) =>
+      !element.hasAttribute("disabled") &&
+      element.getAttribute("aria-hidden") !== "true" &&
+      element.tabIndex !== -1
+  );
+}
+
+function trapFocus(container: HTMLElement, event: KeyboardEvent) {
+  if (event.key !== "Tab") return;
+
+  const focusable = getFocusableElements(container);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  const focusIsInside = active !== null && container.contains(active);
+
+  if (focusable.length === 1) {
+    event.preventDefault();
+    first.focus();
+    return;
+  }
+
+  if (event.shiftKey) {
+    if (!focusIsInside || active === first) {
+      event.preventDefault();
+      last.focus();
+    }
+    return;
+  }
+
+  if (!focusIsInside || active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export function AccountMenu() {
   const { profile, loading: profileLoading, error: profileError } = useMemberProfile();
   const [open, setOpen] = useState(false);
@@ -30,6 +82,8 @@ export function AccountMenu() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const logoutTriggerRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const logoutDialogRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -66,15 +120,25 @@ export function AccountMenu() {
   useEffect(() => {
     if (!open && !confirmLogout) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (confirmLogout) {
-        setConfirmLogout(false);
+      if (e.key === "Escape") {
+        if (confirmLogout) {
+          setConfirmLogout(false);
+          return;
+        }
+        close();
         return;
       }
-      close();
+
+      const trapRoot = confirmLogout
+        ? logoutDialogRef.current
+        : open
+          ? drawerRef.current
+          : null;
+      if (!trapRoot) return;
+      trapFocus(trapRoot, e);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [open, confirmLogout, close]);
 
   useEffect(() => {
@@ -162,6 +226,7 @@ export function AccountMenu() {
             onClick={close}
           />
           <aside
+            ref={drawerRef}
             id="mrc-account-panel"
             role="dialog"
             aria-modal="true"
@@ -300,6 +365,7 @@ export function AccountMenu() {
         <>
           <div className="fixed inset-0 z-[999] bg-black/50" />
           <div
+            ref={logoutDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="logout-title"

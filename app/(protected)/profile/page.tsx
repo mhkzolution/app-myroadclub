@@ -171,7 +171,6 @@ export default function ProfilePage() {
                       value={form.firstName}
                       onChange={(event) => changeField("firstName", event.target.value)}
                       autoComplete="given-name"
-                      maxLength={100}
                       disabled={saving}
                       required
                     />
@@ -189,7 +188,6 @@ export default function ProfilePage() {
                       value={form.lastName}
                       onChange={(event) => changeField("lastName", event.target.value)}
                       autoComplete="family-name"
-                      maxLength={100}
                       disabled={saving}
                       required
                     />
@@ -208,7 +206,6 @@ export default function ProfilePage() {
                       value={form.displayName}
                       onChange={(event) => changeField("displayName", event.target.value)}
                       autoComplete="name"
-                      maxLength={100}
                       disabled={saving}
                       required
                     />
@@ -228,7 +225,6 @@ export default function ProfilePage() {
                       value={form.email}
                       onChange={(event) => changeField("email", event.target.value)}
                       autoComplete="email"
-                      maxLength={254}
                       disabled={saving}
                       required
                     />
@@ -248,7 +244,6 @@ export default function ProfilePage() {
                       value={form.phone}
                       onChange={(event) => changeField("phone", event.target.value)}
                       autoComplete="tel"
-                      maxLength={40}
                       disabled={saving}
                     />
                   )}

@@ -154,6 +154,17 @@ test("profile validation enforces server text limits", () => {
   );
 });
 
+test("profile validation counts astral Unicode code points for name limits", () => {
+  assert.equal(
+    validateMemberProfileInput({ ...validInput, firstName: "😀".repeat(100) }),
+    null
+  );
+  assert.equal(
+    validateMemberProfileInput({ ...validInput, firstName: "😀".repeat(101) }),
+    "First name must be 100 characters or fewer."
+  );
+});
+
 test("request-form defaults apply only on the first valid profile per mount", () => {
   assert.equal(takeFirstRequestFormProfileDefaults(false, null), null);
   assert.deepEqual(takeFirstRequestFormProfileDefaults(false, profile), profile);

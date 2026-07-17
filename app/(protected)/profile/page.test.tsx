@@ -32,4 +32,22 @@ test("marks only the invalid profile field", async () => {
   expect(firstName).toHaveAttribute("aria-invalid", "true");
   expect(lastName).not.toHaveAttribute("aria-invalid");
   expect(screen.getByRole("alert")).toHaveTextContent("First name is required.");
+  expect(firstName).toHaveAccessibleDescription("First name is required.");
+
+  await user.type(firstName, "Ada");
+  expect(firstName).not.toHaveAttribute("aria-invalid");
+  expect(firstName).not.toHaveAccessibleDescription();
+});
+
+test("editable profile controls do not expose native maxlength", () => {
+  render(<ProfilePage />);
+  for (const label of [
+    "First name",
+    "Last name",
+    "Display name",
+    "Email",
+    "Phone number",
+  ]) {
+    expect(screen.getByLabelText(label)).not.toHaveAttribute("maxlength");
+  }
 });

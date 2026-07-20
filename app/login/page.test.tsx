@@ -97,13 +97,19 @@ describe("LoginPage", () => {
     expect(localStorage.getItem("wp_token")).toBeNull();
   });
 
-  test("links Register to the membership page", () => {
+  test("separates login and Register sections with an or divider", () => {
     render(<LoginPage />);
+
+    expect(screen.getByRole("separator", { name: "or" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New to My Road Club?" })).toBeInTheDocument();
 
     const register = screen.getByRole("link", { name: "Register" });
     expect(register).toHaveAttribute(
       "href",
       "https://myroadclub.com/#membership"
+    );
+    expect(register.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["w-full", "min-h-11", "rounded-xl"])
     );
   });
 

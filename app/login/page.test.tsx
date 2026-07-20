@@ -97,6 +97,16 @@ describe("LoginPage", () => {
     expect(localStorage.getItem("wp_token")).toBeNull();
   });
 
+  test("links Register to the membership page", () => {
+    render(<LoginPage />);
+
+    const register = screen.getByRole("link", { name: "Register" });
+    expect(register).toHaveAttribute(
+      "href",
+      "https://myroadclub.com/#membership"
+    );
+  });
+
   test("renders an accessible error banner instead of window.alert on failure", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
     loginWPMock.mockRejectedValue(new Error("Login failed"));

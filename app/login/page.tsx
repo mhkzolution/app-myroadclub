@@ -121,6 +121,16 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-mrc-text/70">
+          or{" "}
+          <a
+            href="https://myroadclub.com/#membership"
+            className="font-bold text-mrc-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mrc-cyan/30"
+          >
+            Register
+          </a>
+        </p>
       </Card>
     </main>
   );
